@@ -4,11 +4,13 @@
 //  Class Account: CSSC0034
 //  Course: CS570 Operating Systems
 //  Section: 1
+//  Due Date: September 4, 2019
 //  File name: getword.c
 //  Compiler Version: XCode 10.2.1
 //
 //  This function examines successive words on the input stream (stdin) and returns the size of each word
-//  of the user input and adds each character into the w pointer.
+//  of the user input and adds each character into the w pointer. The driver program p0.c then calls this
+//  function and prints it out.
 
 #include <stdio.h>
 #include <string.h>
@@ -30,53 +32,38 @@ int getword(char *w)
          if (iochar != ' ') {
             wordSize++;
             *w = iochar;        //Populates the string array element with characters
-            w++;            //Increments the pointer to populate the next element of the string array
+            w++;                //Increments the pointer to populate the next element of the string array
          }
          
-         if (iochar == ' ') {     //TODO: CHECK IF THIS PROPERLY SKIPS LEADING SPACES
-             w--;
+         //If it is a leading space, then it gets ignored and delimited
+         //Else if it is a space between words, then it returns the size of the word
+         if (iochar == ' ' && wordSize == 0) {
+             continue;
+         } else if (iochar == ' ' && wordSize > 0)
+         {
+             w--;               //Moves the pointer back one to eliminate an extra space printed
              return wordSize;
          }
      }
     
+    //Special case for the word 'done' inputted into the io stream
+    if (strcmp(startOfWordPtr, "done") == 0) {
+        return -1;
+    }
+    
+    if (iochar == EOF && wordSize == 0)
+        return -1;
+    
     if (iochar == '\n' && newlineFlag == 0)
     {
-        ungetc(iochar, stdin);
+        ungetc(iochar, stdin);  //Keeps the newline character for the next getword call to print out
         newlineFlag++;
         return wordSize;
     }
     
     if (iochar == '\n' && newlineFlag == 1)
-    {
+        newlineFlag = 0;        //Resets the flag for the next user input
         return 0;
-    }
-        //return 0;
-    
-    if (iochar == EOF && wordSize == 0)
-        return -1;
-    
-    if (strcmp(startOfWordPtr, "done") == 0)
-    {
-        return -1;
-    }
-    
-    return wordSize;
-}
-    
-    //BUGS:
-    //New line character not printing all the time, only prints when it is the only character inputted
-    //Space after word when tehre are multiple words
-    
-    
-    //Gets one word from the input stream
-    //A word is anything except space, newline, and EOF
-    //Input is a pointer to the beginning of a character array
-    //if you have collected the word 'done' then return -1 instead of 4
 
-    //skips leading spaces
-    //Output is -1, 0, or the number of characters in the word
-    /*if wordsize = 0 and EOF then return -1*/
-    /*if newline encountered while the wordsize is zero then return 0*/
-    /*Put the word back into the pointer of w*/
-    
-    
+    return wordSize;            //Allows user to keep inputting more values until ctrl+d is inputted
+}
