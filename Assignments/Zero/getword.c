@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
+static int newlineFlag = 0;
 int getword(char *w)
 {
     int iochar;
@@ -25,19 +26,31 @@ int getword(char *w)
     memset(startOfWordPtr, 0, 255);
     
     //Iterates through stdin, analyzing each char of the user input
-     while ((iochar = getchar()) != EOF && iochar != '\n')
-     {
-         if (iochar != ' ')
+     while ((iochar = getchar()) != EOF && iochar != '\n') {
+         if (iochar != ' ') {
             wordSize++;
             *w = iochar;        //Populates the string array element with characters
             w++;            //Increments the pointer to populate the next element of the string array
+         }
          
-         if (iochar == ' ')     //TODO: CHECK IF THIS PROPERLY SKIPS LEADING SPACES
-             break;
+         if (iochar == ' ') {     //TODO: CHECK IF THIS PROPERLY SKIPS LEADING SPACES
+             w--;
+             return wordSize;
+         }
      }
     
-    if (iochar == '\n')
+    if (iochar == '\n' && newlineFlag == 0)
+    {
+        ungetc(iochar, stdin);
+        newlineFlag++;
+        return wordSize;
+    }
+    
+    if (iochar == '\n' && newlineFlag == 1)
+    {
         return 0;
+    }
+        //return 0;
     
     if (iochar == EOF && wordSize == 0)
         return -1;
