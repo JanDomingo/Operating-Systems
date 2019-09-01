@@ -16,7 +16,6 @@
 #include <string.h>
 #include "getword.h"
 
-
 #define NEWLINE '\n'
 #define FINISH -1
 #define EMPTY 0
