@@ -77,8 +77,10 @@ int getword(char *w)
     {
         ungetc(iochar, stdin);
         endOfFileTrigger = CHANGED;
-        return wordSize;
+        if (wordSize > EMPTY)
+        {
+            return wordSize;
+        }
     }
     return FINISH;
 }
-
