@@ -3,6 +3,7 @@
 //  RedID: 820092657
 //  Class Account: CSSC0034
 //  Course: CS570 Operating Systems
+//  Instructor Name: John Carroll
 //  Section: 1
 //  Due Date: September 4, 2019
 //  File name: getword.c
@@ -33,11 +34,12 @@ int getword(char *w)
     //Clears the word array so that it does not display previous characters
     memset(startOfWordPtr, EMPTY, STORAGE);
     
+    //loop:
     //Iterates through stdin, analyzing each char of the user input
-     while ((iochar = getchar()) != EOF && iochar != NEWLINE) {
+     while ((iochar = getchar()) != EOF) {
          if (iochar != ' ') {
             wordSize++;
-            *w = iochar;          //Populates the string array element with characters
+            *w = iochar;          //Populates the w string array element with characters
             w++;                  //Increments the pointer to populate the next element of the string array
          }
          
@@ -45,31 +47,36 @@ int getword(char *w)
          //Else if it is a space between words, then it returns the size of the word
          if (iochar == ' ' && wordSize == EMPTY) {
              continue;
-         } else if (iochar == ' ' && wordSize > EMPTY)
-         {
+         } else if (iochar == ' ' && wordSize > EMPTY) {
              w--;                 //Moves the pointer back one to eliminate an extra space printed
              return wordSize;
+         }
+         
+         if (iochar == NEWLINE)
+         {
+             wordSize--;
+             w--;
+             *w = EMPTY;
+             
+             if (newlineFlag == EMPTY) {
+                 ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
+                 newlineFlag = CHANGED;
+                 return wordSize;
+             } else if (newlineFlag == CHANGED) {
+                 newlineFlag = EMPTY;     //Resets the flag for the next user input
+                 //return EMPTY;
+                 continue;
+             //return EMPTY;
+             //goto loop;
          }
      }
     
     //Special case for the word 'done' inputted into the io stream
-    if (strcmp(startOfWordPtr, "done") == EMPTY) {
+    if ((strcmp(startOfWordPtr, "done") == EMPTY) || (iochar == EOF && wordSize == EMPTY)){
         return FINISH;
     }
-    
-    if (iochar == EOF && wordSize == EMPTY)
-        return FINISH;
-    
-    if (iochar == NEWLINE && newlineFlag == EMPTY)
-    {
-        ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
-        newlineFlag++;
-        return wordSize;
-    }
-    
-    if (iochar == NEWLINE && newlineFlag == CHANGED)
-        newlineFlag = EMPTY;     //Resets the flag for the next user input
-        return EMPTY;
 
+        
+     }
     return wordSize;            //Allows user to keep inputting more values until ctrl+d is inputted
 }
