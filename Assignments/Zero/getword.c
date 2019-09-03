@@ -25,6 +25,7 @@
 
 int getword(char *w)
 {
+    //freopen("test.txt", "r", stdin);
     int iochar;
     int wordSize = EMPTY;
     static int endOfFileTrigger = EMPTY;
@@ -79,6 +80,9 @@ int getword(char *w)
         endOfFileTrigger = CHANGED;
         if (wordSize > EMPTY)
         {
+            if (strcmp(startOfWordPtr, "done") == EMPTY) {
+                return FINISH;
+            }
             return wordSize;
         }
     }
