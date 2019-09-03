@@ -17,17 +17,17 @@
 #include <string.h>
 #include "getword.h"
 
-#define DELIMITER ' '
-#define NEWLINE '\n'
 #define FINISH -1
 #define EMPTY 0
 #define CHANGED 1
+#define DELIMITER ' '
+#define NEWLINE '\n'
 
-static int newlineFlag = EMPTY;
 int getword(char *w)
 {
     int iochar;
     int wordSize = EMPTY;
+    static int endOfFileTrigger = EMPTY;
     
     //Saves a pointer to the start of the array to strcmp with 'done' at the end
     char *startOfWordPtr = w;
@@ -35,13 +35,12 @@ int getword(char *w)
     //Clears the word array so that it does not display previous characters
     memset(startOfWordPtr, EMPTY, STORAGE);
     
-    //loop:
     //Iterates through stdin, analyzing each char of the user input
     while ((iochar = getchar()) != EOF) {
         if (iochar != DELIMITER) {
             wordSize++;
-            *w = iochar;          //Populates the w string array element with characters
-            w++;                  //Increments the pointer to populate the next element of the string array
+            *w = iochar;            //Populates the w string array element with characters
+            w++;                    //Increments the pointer to populate the next element of the string array
         }
         
         //If it is a leading space, then it gets ignored and delimited
@@ -49,59 +48,37 @@ int getword(char *w)
         if (iochar == DELIMITER && wordSize == EMPTY) {
             continue;
         } else if (iochar == DELIMITER && wordSize > EMPTY) {
-            w--;                 //Moves the pointer back one to eliminate an extra space printed
+            w--;                    //Moves the pointer back one to eliminate an extra space printed
             return wordSize;
         }
         
         //If the character is a newline directly at the end of a string
         if (iochar == NEWLINE) {
+            wordSize--;              //Newline char not counted in wordSize
+            w--;                     //Points to the newline char
+            *w = EMPTY;              //Deletes the newline char
             
-            wordSize--;
-            w--;
-            *w = EMPTY;
+            //Special case for the word 'done' inputted into the io stream
+            if (strcmp(startOfWordPtr, "done") == EMPTY) {
+                return FINISH;
+            }
             
             if (wordSize > EMPTY) {
-            ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
-            return wordSize;
-            }
-        
-            //Else f the character is a newline and just entered by itself
-            else if (wordSize == EMPTY) {
-                return EMPTY;
-            }
-        }
-        
-            
-        
-        
-        
-        
-
-        /*
-        if (iochar == NEWLINE)
-        {
-            wordSize--;
-            w--;
-            *w = EMPTY;
-            
-            if (newlineFlag == EMPTY) {
                 ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
-                newlineFlag = CHANGED;
                 return wordSize;
-            } else if (newlineFlag == CHANGED) {    //lDoes not reinput the newline into the stream again
-                newlineFlag = EMPTY;     //Resets the flag for the next user input
+            } else if (wordSize == EMPTY) {   //Else if the character is a newline and just entered by itself
                 return EMPTY;
-                //continue;
-                //goto loop;
             }
-        }*/
-    }
-        
-        //Special case for the word 'done' inputted into the io stream
-        if ((strcmp(startOfWordPtr, "done") == EMPTY) || (iochar == EOF)){
-            return FINISH;
         }
-        
-    return wordSize;            //Allows user to keep inputting more values until ctrl+d is inputted
     }
+    
+    //Handles premature EOF statements by saving the EOF in the stream then returning the wordSize
+    if ((iochar == EOF) && (endOfFileTrigger == EMPTY))
+    {
+        ungetc(iochar, stdin);
+        endOfFileTrigger = CHANGED;
+        return wordSize;
+    }
+    return FINISH;
+}
 
