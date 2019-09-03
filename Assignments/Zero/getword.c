@@ -50,6 +50,9 @@ int getword(char *w)
             continue;
         } else if (iochar == DELIMITER && wordSize > EMPTY) {
             w--;                    //Moves the pointer back one to eliminate an extra space printed
+            if (strcmp(startOfWordPtr, "done") == EMPTY) {  //If there is a space after "done"
+                return FINISH;
+            }
             return wordSize;
         }
         
@@ -59,7 +62,7 @@ int getword(char *w)
             w--;                     //Points to the newline char
             *w = EMPTY;              //Deletes the newline char
             
-            //Special case for the word 'done' inputted into the io stream
+            //If there is a newline after "done"
             if (strcmp(startOfWordPtr, "done") == EMPTY) {
                 return FINISH;
             }
@@ -80,7 +83,7 @@ int getword(char *w)
         endOfFileTrigger = CHANGED;
         if (wordSize > EMPTY)
         {
-            if (strcmp(startOfWordPtr, "done") == EMPTY) {
+            if (strcmp(startOfWordPtr, "done") == EMPTY) {  //If done is right before an EOF character
                 return FINISH;
             }
             return wordSize;
