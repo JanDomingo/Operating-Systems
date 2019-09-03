@@ -17,12 +17,13 @@
 #include <string.h>
 #include "getword.h"
 
+#define DELIMITER ' '
 #define NEWLINE '\n'
 #define FINISH -1
 #define EMPTY 0
 #define CHANGED 1
 
-static int newlineFlag = 0;
+static int newlineFlag = EMPTY;
 int getword(char *w)
 {
     int iochar;
@@ -36,47 +37,71 @@ int getword(char *w)
     
     //loop:
     //Iterates through stdin, analyzing each char of the user input
-     while ((iochar = getchar()) != EOF) {
-         if (iochar != ' ') {
+    while ((iochar = getchar()) != EOF) {
+        if (iochar != DELIMITER) {
             wordSize++;
             *w = iochar;          //Populates the w string array element with characters
             w++;                  //Increments the pointer to populate the next element of the string array
-         }
-         
-         //If it is a leading space, then it gets ignored and delimited
-         //Else if it is a space between words, then it returns the size of the word
-         if (iochar == ' ' && wordSize == EMPTY) {
-             continue;
-         } else if (iochar == ' ' && wordSize > EMPTY) {
-             w--;                 //Moves the pointer back one to eliminate an extra space printed
-             return wordSize;
-         }
-         
-         if (iochar == NEWLINE)
-         {
-             wordSize--;
-             w--;
-             *w = EMPTY;
-             
-             if (newlineFlag == EMPTY) {
-                 ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
-                 newlineFlag = CHANGED;
-                 return wordSize;
-             } else if (newlineFlag == CHANGED) {
-                 newlineFlag = EMPTY;     //Resets the flag for the next user input
-                 //return EMPTY;
-                 continue;
-             //return EMPTY;
-             //goto loop;
-         }
-     }
-    
-    //Special case for the word 'done' inputted into the io stream
-    if ((strcmp(startOfWordPtr, "done") == EMPTY) || (iochar == EOF && wordSize == EMPTY)){
-        return FINISH;
+        }
+        
+        //If it is a leading space, then it gets ignored and delimited
+        //Else if it is a space between words, then it returns the size of the word
+        if (iochar == DELIMITER && wordSize == EMPTY) {
+            continue;
+        } else if (iochar == DELIMITER && wordSize > EMPTY) {
+            w--;                 //Moves the pointer back one to eliminate an extra space printed
+            return wordSize;
+        }
+        
+        //If the character is a newline directly at the end of a string
+        if (iochar == NEWLINE) {
+            
+            wordSize--;
+            w--;
+            *w = EMPTY;
+            
+            if (wordSize > EMPTY) {
+            ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
+            return wordSize;
+            }
+        
+            //Else f the character is a newline and just entered by itself
+            else if (wordSize == EMPTY) {
+                return EMPTY;
+            }
+        }
+        
+            
+        
+        
+        
+        
+
+        /*
+        if (iochar == NEWLINE)
+        {
+            wordSize--;
+            w--;
+            *w = EMPTY;
+            
+            if (newlineFlag == EMPTY) {
+                ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
+                newlineFlag = CHANGED;
+                return wordSize;
+            } else if (newlineFlag == CHANGED) {    //lDoes not reinput the newline into the stream again
+                newlineFlag = EMPTY;     //Resets the flag for the next user input
+                return EMPTY;
+                //continue;
+                //goto loop;
+            }
+        }*/
+    }
+        
+        //Special case for the word 'done' inputted into the io stream
+        if ((strcmp(startOfWordPtr, "done") == EMPTY) || (iochar == EOF)){
+            return FINISH;
+        }
+        
+    return wordSize;            //Allows user to keep inputting more values until ctrl+d is inputted
     }
 
-        
-     }
-    return wordSize;            //Allows user to keep inputting more values until ctrl+d is inputted
-}
