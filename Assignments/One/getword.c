@@ -5,7 +5,7 @@
 //  Course: CS570 Operating Systems
 //  Instructor Name: John Carroll
 //  Section: 1
-//  TODO: Change Due Date: September 4, 2019
+//  TODO: Due Date: September 4, 2019
 //  Assignment: Program 1
 //  File name: getword.c
 //  Compiler Version: XCode 10.2.1
@@ -28,9 +28,25 @@
 #define DELIMITER ' '
 #define NEWLINE '\n'
 
+int metaCharacterCheck(int iochar) {
+    char metaString[STORAGE] = {EMPTY};
+    char *startOfMetaStringPtr = metaString;
+    //Implement greedy algorithm below
+    while (iochar == '>' || iochar == '|' || iochar == '#' || iochar == '&')
+    {
+        *metaString = iochar;
+        iochar = getchar();
+        return 1;
+    }
+    
+    return 0;
+}
+
+
+
 int getword(char *w)
 {
-    //freopen("test.txt", "r", stdin);
+    char metaCharacters[7][3] = {">", ">>", ">&", ">>^", "|", "#", "&"};
     int iochar;
     int wordSize = EMPTY;
     static int endOfFileTrigger = EMPTY;
@@ -43,7 +59,7 @@ int getword(char *w)
     
     //Iterates through stdin, analyzing each char of the user input
     while ((iochar = getchar()) != EOF) {
-        if (iochar != DELIMITER) {
+        if (metaCharacterCheck(iochar) == 0) {
             wordSize++;
             *w = iochar;            //Populates the w string array element with characters
             w++;                    //Increments the pointer to populate the next element of the string array
@@ -96,3 +112,5 @@ int getword(char *w)
     }
     return FINISH;
 }
+
+
