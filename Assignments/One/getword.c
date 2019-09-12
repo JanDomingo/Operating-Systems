@@ -10,8 +10,8 @@
 //  File name: getword.c
 //  Compiler Version: XCode 10.2.1
 //
-//  This function examines successive words on the input stream (stdin) and returns the size of each word
-//  of the user input and adds each character into the w pointer. The driver program p1.c then calls this
+//  The getword function examines successive words on the input stream (stdin) and returns the size of each
+//  word of the user input and adds each character into the w pointer. The driver program p1.c then calls this
 //  function and prints it out. This program is similar to the getword.c in program 0 except with the addition
 //  of meta characters <, >, >&, >>, >>&, |, #, and &. Additionally, the special \ character treats
 //  metacharacters as regular characters. The metacharacters also act as delimeters, similar to a space
@@ -29,10 +29,10 @@
 #define CHANGED 1
 #define DELIMITER ' '
 #define NEWLINE '\n'
+#define SPECIALCHAR '\\'    //Actually means just a single backslash but due to escape sequences in C, a
+                            //double backslash is used to represent a single backslash
 
-//TODO: NEED TO IMPLEMENT ANOTHER METACHARACTER CHECK THAT ONLY RETURNS A 1 OR 0
-
-//Returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
+//This function returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
 //Possible cases for metacharacers: '>', '>>', '>&', '>>^', '|', '#', '&'
 static int metaCharacterCheck(int iochar) {
     if (iochar == '>' ||  iochar == '|' || iochar == '#' || iochar == '&') {
@@ -42,9 +42,9 @@ static int metaCharacterCheck(int iochar) {
         return NOT_META;
 }
 
-//Returns the metacharacter word size and puts the metacharacters on the w pointer to output.
-//This function is called "greedyAlgorithm" as takes the largest metacharacter possible when reading
-//from left to right. (E.g. >>>^ returns a >> and >^. NOT > and >>^)
+//This function eturns the metacharacter word size and puts the metacharacters on the w pointer to output.
+//It is called "greedyAlgorithm" as takes the largest metacharacter possible when reading from left to right
+//(E.g. >>>^ returns a >> and >^. NOT > and >>^)
 //This function handles the case of detected metacharacters as well as all subsequent metacharacters
 //following the call to this function. As a result, any chars that is not a meta character while this function
 //is running is pushed back into the stdin stream for rerun in p0.c
@@ -118,10 +118,10 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
     return metaCharWordSize;            //Return '>'
 }
 
-
+/**********************************THIS IS THE GETWORD FUNCTION**********************************************/
+//Program description for this function can be found in the beginning of this source code file
 int getword(char *w)
 {
-    //char metaCharacters[7][3] = {">", ">>", ">&", ">>^", "|", "#", "&"};
     int iochar;
     int wordSize = EMPTY;
     static int endOfFileTrigger = EMPTY;
@@ -135,6 +135,24 @@ int getword(char *w)
     //Iterates through stdin, analyzing each char of the user input
     while ((iochar = getchar()) != EOF) {
         
+        /*********************THIS SECTION CHECKS IF THE CHARACTER IS A BACKSLASH***************************/
+        //If a backslash is detected, the following character is inputted into the string array regularly
+        //even if it is a special character such as a metacharacter or space. The following character
+        //is then retrieved to continue checking the program.
+        if (iochar == '\\') {
+            iochar = getchar();
+            if (iochar == EOF)      //EOF is handled at the end of the program and so the program exits to go
+                break;              //to the corresponding EOF handler
+            wordSize++;
+            *w = iochar;            //Populates the w string array element with characters
+            w++;                    //Increments the pointer to populate the next element of the string array
+            iochar = getchar();
+            if (iochar == EOF)
+                break;
+
+        }
+
+            
         /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER**********************/
         //If the character is a meta character and there is a current word, then return the current wordsie
         //and ungetc will restore the stdin stream to the metachar for the next run
@@ -160,18 +178,18 @@ int getword(char *w)
         }
         
         /**********************THIS SECTION CHECKS IF THE CHARACTER IS A NEWLINE*****************************/
-        //If the character is a newline directly at the end of a string
         if (iochar == NEWLINE) {
             //If there is a newline after "done"
             if (strcmp(startOfWordPtr, "done") == EMPTY) {
                 return FINISH;
             }
             
-            if (wordSize > EMPTY) {
-                ungetc(iochar, stdin);    //Keeps the newline character for the next getword call to print out
-                return wordSize;
+            
+            if (wordSize > EMPTY) {       //If the character is a newline directly at the end of a string
+                ungetc(iochar, stdin);    //Return current word and keep the newline character for the next
+                return wordSize;          //getword call to print out
             } else if (wordSize == EMPTY) {   //Else if the character is a newline and just entered by itself
-                return EMPTY;
+                return EMPTY;                 //Return 0 and prints '[]'
             }
         }
         
