@@ -33,6 +33,7 @@
 //TODO: NEED TO IMPLEMENT ANOTHER METACHARACTER CHECK THAT ONLY RETURNS A 1 OR 0
 
 //Returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
+//Possible cases for metacharacers: '>', '>>', '>&', '>>^', '|', '#', '&'
 static int metaCharacterCheck(int iochar) {
     if (iochar == '>' ||  iochar == '|' || iochar == '#' || iochar == '&') {
         //ungetc(iochar, stdin);
@@ -41,75 +42,80 @@ static int metaCharacterCheck(int iochar) {
         return NOT_META;
 }
 
-//Returns the metacharacter word size and puts the metacharacters on the w pointer to output
+//Returns the metacharacter word size and puts the metacharacters on the w pointer to output.
+//This function is called "greedyAlgorithm" as takes the largest metacharacter possible when reading
+//from left to right. (E.g. >>>^ returns a >> and >^. NOT > and >>^)
+//This function handles the case of detected metacharacters as well as all subsequent metacharacters
+//following the call to this function. As a result, any chars that is not a meta character while this function
+//is running is pushed back into the stdin stream for rerun in p0.c
 static int greedyAlgorithm(int iochar, char *w, char *wstart) {
-    //char metaString[STORAGE] = {EMPTY};
-    //char *metaStringPtr = metaString;
-    //char *startOfMetaStringPtr = metaStringPtr;
     int metaCharWordSize = EMPTY;
     
-    if (iochar == '>') {            //if '>'
+    if (iochar == '>') {
         *w = iochar;
         w++;
         metaCharWordSize++;
         iochar = getchar();
-        
-         if (iochar == '>') {       //if '>>'
+
+         if (iochar == '>') {
              *w = iochar;
              w++;
              metaCharWordSize++;
              iochar = getchar();
             
-            if (iochar == '^') {    //if '>>^'
+            if (iochar == '^') {
                 *w = iochar;
                 w++;
                 metaCharWordSize++;
                 iochar = getchar();
-                return metaCharWordSize;
+                if (metaCharacterCheck(iochar) == NOT_META)
+                    ungetc(iochar, stdin);
+                return metaCharWordSize;    //Return '>>^'
             }
-            return metaCharWordSize;
+            if (metaCharacterCheck(iochar) == NOT_META)
+                ungetc(iochar, stdin);
+            return metaCharWordSize;        //Return '>>'
          }
         
-        if (iochar == '&') {        //if '>&'
+        if (iochar == '&') {               //If '>&'
             *w = iochar;
             w++;
             metaCharWordSize++;
             //iochar = getchar();
-            return metaCharWordSize;
+            if (metaCharacterCheck(iochar) == NOT_META)
+                ungetc(iochar, stdin);
+            return metaCharWordSize;        //Return '>&'
         }
-        
-        return metaCharWordSize;
     }
     
-    if (iochar == '|') {            //if '|'
+    //The following three if statements do not need an ungetc because the metacharacters '|', '#', and "&'
+    //do not have any subsequent metacharacter possibilities and is returned immediately after detection
+    if (iochar == '|') {
+        *w = iochar;
+        w++;
+        metaCharWordSize++;
+        return metaCharWordSize;    //return '|'
+    }
+    
+    if (iochar == '#') {
         *w = iochar;
         w++;
         metaCharWordSize++;
         //iochar = getchar();
-        return metaCharWordSize;
+        return metaCharWordSize;    //return '#'
     }
     
-    if (iochar == '#') {            //if '#'
+    if (iochar == '&') {            //If just an '&' by itself
         *w = iochar;
         w++;
         metaCharWordSize++;
         //iochar = getchar();
-        return metaCharWordSize;
+        return metaCharWordSize;    //return '&'
     }
     
-    if (iochar == '&') {            //if '&'
-        *w = iochar;
-        w++;
-        metaCharWordSize++;
-        //iochar = getchar();
-        return metaCharWordSize;
-    }
-    
-    
-    
-    
-    
-    return metaCharWordSize;
+    if (metaCharacterCheck(iochar) == NOT_META)     //TODO:Perform further testing on this to make sure it returns just a '>'
+        ungetc(iochar, stdin);          //If the character is not a meta character anymore then ungetc
+    return metaCharWordSize;            //Return '>'
 }
 
 
@@ -141,8 +147,8 @@ int getword(char *w)
             *w = EMPTY;              //Deletes the meta character
             
             if (wordSize > EMPTY) {
-                //ungetc(iochar, stdin);
-                return wordSize;
+                ungetc(iochar, stdin);      //If the metacharacter is after a string, it returns the string
+                return wordSize;            //only then runs the program again with the metacharacter
             } else if (wordSize == EMPTY) {
                 return greedyAlgorithm(iochar, w, startOfWordPtr);
             }
