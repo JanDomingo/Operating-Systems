@@ -16,7 +16,7 @@
 //  of meta characters <, >, >&, >>, >>&, |, #, and &. Additionally, the special \ character treats
 //  metacharacters as regular characters. The metacharacters also act as delimeters, similar to a space
 //  which separates words and prints out the word pointed to and up to but not including the metacharacter.
-//  The metacharacter is then printed on its own line.
+//  The metacharacter is then returned and printed on its own line.
 
 #include <stdio.h>
 #include <string.h>
@@ -134,18 +134,11 @@ int getword(char *w)
     
     //Iterates through stdin, analyzing each char of the user input
     while ((iochar = getchar()) != EOF) {
-            wordSize++;
-            *w = iochar;            //Populates the w string array element with characters
-            w++;                    //Increments the pointer to populate the next element of the string array
         
         /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER**********************/
         //If the character is a meta character and there is a current word, then return the current wordsie
         //and ungetc will restore the stdin stream to the metachar for the next run
         if (metaCharacterCheck(iochar) == IS_META) {
-            wordSize--;              //Meta character char not counted in wordSize - has separate function
-            w--;                     //Points to the meta character
-            *w = EMPTY;              //Deletes the meta character
-            
             if (wordSize > EMPTY) {
                 ungetc(iochar, stdin);      //If the metacharacter is after a string, it returns the string
                 return wordSize;            //only then runs the program again with the metacharacter
@@ -160,7 +153,6 @@ int getword(char *w)
         if (iochar == DELIMITER && wordSize == EMPTY) {
             continue;
         } else if (iochar == DELIMITER && wordSize > EMPTY) {
-            w--;                    //Moves the pointer back one to eliminate an extra space printed
             if (strcmp(startOfWordPtr, "done") == EMPTY) {  //If there is a space after "done"
                 return FINISH;
             }
@@ -170,10 +162,6 @@ int getword(char *w)
         /**********************THIS SECTION CHECKS IF THE CHARACTER IS A NEWLINE*****************************/
         //If the character is a newline directly at the end of a string
         if (iochar == NEWLINE) {
-            wordSize--;              //Newline char not counted in wordSize
-            w--;                     //Points to the newline char
-            *w = EMPTY;              //Deletes the newline char
-            
             //If there is a newline after "done"
             if (strcmp(startOfWordPtr, "done") == EMPTY) {
                 return FINISH;
@@ -186,6 +174,13 @@ int getword(char *w)
                 return EMPTY;
             }
         }
+        
+        /**********************THIS SECTION HANDLES REGULAR CHARACTERS IN THE STRING*************************/
+        //If the character is a letter then increment the wordsize then incrememnt the wordsize and add it
+        //to the string that will be displayed
+        wordSize++;
+        *w = iochar;            //Populates the w string array element with characters
+        w++;                    //Increments the pointer to populate the next element of the string array
     }
     
     /****************************THIS SECTION HANDLES AN EOF CHARACTER***************************************/
