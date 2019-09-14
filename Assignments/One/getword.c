@@ -143,6 +143,10 @@ int getword(char *w)
             iochar = getchar();
             if (iochar == EOF)      //EOF is handled at the end of the program and so the program exits to go
                 break;              //to the corresponding EOF handler
+            if (iochar == NEWLINE) {
+                ungetc(iochar,stdin);   //Pushes back newline to input stream for rerun
+                continue;
+            }
             wordSize++;
             *w = iochar;            //Populates the w string array element with characters
             w++;                    //Increments the pointer to populate the next element of the string array
