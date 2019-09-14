@@ -5,7 +5,7 @@
 //  Course: CS570 Operating Systems
 //  Instructor Name: John Carroll
 //  Section: 1
-//  TODO: Due Date: September 16, 2019
+//  Due Date: September 16, 2019
 //  Assignment: Program 1
 //  File name: getword.c
 //  Compiler Version: XCode 10.2.1
@@ -110,7 +110,6 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
         *w = iochar;
         w++;
         metaCharWordSize++;
-        //iochar = getchar();
         return metaCharWordSize;    //return '#'
     }
     
@@ -118,11 +117,10 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
         *w = iochar;
         w++;
         metaCharWordSize++;
-        //iochar = getchar();
         return metaCharWordSize;    //return '&'
     }
     
-    if (metaCharacterCheck(iochar) == NOT_META)     //TODO:Perform further testing on this to make sure it returns just a '>'
+    if (metaCharacterCheck(iochar) == NOT_META)
         ungetc(iochar, stdin);          //If the character is not a meta character anymore then ungetc
     
     return metaCharWordSize;            //Return '>' 
