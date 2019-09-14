@@ -10,11 +10,11 @@
 //  File name: getword.c
 //  Compiler Version: XCode 10.2.1
 //
-//  The getword function examines successive words on the input stream (stdin) and returns the size of each
-//  word of the user input and adds each character into the w pointer. The driver program p1.c then calls this
-//  function and prints it out. This program is similar to the getword.c in program 0 except with the addition
-//  of meta characters <, >, >&, >>, >>&, |, #, and &. Additionally, the special \ character treats
-//  metacharacters as regular characters. The metacharacters also act as delimeters, similar to a space
+//  The getword function (line 135) examines successive words on the input stream (stdin) and returns the size
+//  of each word of the user input and adds each character into the w pointer. The driver program p1.c then
+//  calls this function and prints it out. This program is similar to the getword.c in program 0 except with
+//  the addition of meta characters <, >, >&, >>, >>&, |, #, and &. Additionally, the special \ character
+//  treats metacharacters as regular characters. The metacharacters also act as delimeters, similar to a space
 //  which separates words and prints out the word pointed to and up to but not including the metacharacter.
 //  The metacharacter is then returned and printed on its own line.
 
