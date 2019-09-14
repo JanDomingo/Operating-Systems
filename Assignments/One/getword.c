@@ -68,11 +68,11 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
                 w++;
                 metaCharWordSize++;
                 iochar = getchar();
-                if (metaCharacterCheck(iochar) == NOT_META)
+                //if (metaCharacterCheck(iochar) == NOT_META)
                     ungetc(iochar, stdin);
                 return metaCharWordSize;    //Return '>>&'
             }
-            if (metaCharacterCheck(iochar) == NOT_META)
+            //if (metaCharacterCheck(iochar) == NOT_META)
                 ungetc(iochar, stdin);
             return metaCharWordSize;        //Return '>>'
          }
@@ -82,7 +82,7 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
             w++;
             metaCharWordSize++;
             //iochar = getchar();
-            if (metaCharacterCheck(iochar) == NOT_META)
+           // if (metaCharacterCheck(iochar) == NOT_META)
                 ungetc(iochar, stdin);
             return metaCharWordSize;        //Return '>&'
         }
