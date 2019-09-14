@@ -35,7 +35,7 @@
 //This function returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
 //Possible cases for metacharacers: '>', '>>', '>&', '>>&', '|', '#', '&'
 static int metaCharacterCheck(int iochar) {
-    if (iochar == '>' ||  iochar == '|' || iochar == '#' || iochar == '&') {
+    if (iochar == '>' ||  iochar == '<' || iochar == '|' || iochar == '#' || iochar == '&') {
         //ungetc(iochar, stdin);
         return IS_META;
     } else
@@ -81,15 +81,22 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
             *w = iochar;
             w++;
             metaCharWordSize++;
-            //iochar = getchar();
+            iochar = getchar();
            // if (metaCharacterCheck(iochar) == NOT_META)
                 ungetc(iochar, stdin);
             return metaCharWordSize;        //Return '>&'
         }
     }
     
-    //The following three if statements do not need an ungetc because the metacharacters '|', '#', and "&'
+    //The following four if statements do not need an ungetc because the metacharacters '<', '|', '#', and "&'
     //do not have any subsequent metacharacter possibilities and is returned immediately after detection
+    if (iochar == '<') {
+        *w = iochar;
+        w++;
+        metaCharWordSize++;
+        return metaCharWordSize;    //return '<'
+    }
+    
     if (iochar == '|') {
         *w = iochar;
         w++;
@@ -145,7 +152,7 @@ int getword(char *w)
                 break;              //to the corresponding EOF handler
             if (iochar == NEWLINE) {
                 ungetc(iochar,stdin);   //Pushes back newline to input stream for rerun
-                continue;
+                continue;               //Skips current block, continues to NEWLINE check
             }
             wordSize++;
             *w = iochar;            //Populates the w string array element with characters
