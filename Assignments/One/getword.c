@@ -29,14 +29,15 @@
 #define CHANGED 1
 #define DELIMITER ' '
 #define NEWLINE '\n'
+#define BUFFER_LIMIT (255 - 1) //255 is the STORAGE variable limit
 #define SPECIALCHAR '\\'    //Actually means just a single backslash but due to escape sequences in C, a
                             //double backslash is used to represent a single backslash
 
 //This function returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
 //Possible cases for metacharacers: '>', '>>', '>&', '>>&', '|', '#', '&'
 static int metaCharacterCheck(int iochar) {
+    
     if (iochar == '>' ||  iochar == '<' || iochar == '|' || iochar == '#' || iochar == '&') {
-        //ungetc(iochar, stdin);
         return IS_META;
     } else
         return NOT_META;
@@ -49,6 +50,7 @@ static int metaCharacterCheck(int iochar) {
 //following the call to this function. As a result, any chars that is not a meta character while this function
 //is running is pushed back into the stdin stream for rerun in p0.c
 static int greedyAlgorithm(int iochar, char *w, char *wstart) {
+    
     int metaCharWordSize = EMPTY;
     
     if (iochar == '>') {
@@ -68,24 +70,24 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
                 w++;
                 metaCharWordSize++;
                 iochar = getchar();
-                //if (metaCharacterCheck(iochar) == NOT_META)
                     ungetc(iochar, stdin);
                 return metaCharWordSize;    //Return '>>&'
             }
-            //if (metaCharacterCheck(iochar) == NOT_META)
                 ungetc(iochar, stdin);
             return metaCharWordSize;        //Return '>>'
          }
         
-        if (iochar == '&') {               //If '>&'
+        if (iochar == '&') {                //If '>&'
             *w = iochar;
             w++;
             metaCharWordSize++;
             iochar = getchar();
-           // if (metaCharacterCheck(iochar) == NOT_META)
                 ungetc(iochar, stdin);
             return metaCharWordSize;        //Return '>&'
         }
+        
+        ungetc(iochar, stdin);              //Pushes the getchar character from '>' block back to stdin stream
+        return metaCharWordSize;            //return '>'
     }
     
     //The following four if statements do not need an ungetc because the metacharacters '<', '|', '#', and "&'
@@ -122,10 +124,13 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
     
     if (metaCharacterCheck(iochar) == NOT_META)     //TODO:Perform further testing on this to make sure it returns just a '>'
         ungetc(iochar, stdin);          //If the character is not a meta character anymore then ungetc
-    return metaCharWordSize;            //Return '>'
+    
+    return metaCharWordSize;            //Return '>' 
 }
 
+/************************************************************************************************************/
 /**********************************THIS IS THE GETWORD FUNCTION**********************************************/
+/************************************************************************************************************/
 //Program description for this function can be found in the beginning of this source code file
 int getword(char *w)
 {
@@ -142,7 +147,14 @@ int getword(char *w)
     //Iterates through stdin, analyzing each char of the user input
     while ((iochar = getchar()) != EOF) {
         
-        /*********************THIS SECTION CHECKS IF THE CHARACTER IS A BACKSLASH***************************/
+        /*********************THIS SECTION HANDLES BUFFER OVERFLOWS******************************************/
+        //If the wordsize is 254 then it returns the wordsize as the maximum characters allowed to be returned
+        //is defined by STORAGE - 1. The size of STORAGE is found in getword.h
+        if (wordSize == BUFFER_LIMIT) {
+            ungetc(iochar, stdin);
+            return wordSize;
+        }
+        /*********************THIS SECTION CHECKS IF THE CHARACTER IS A BACKSLASH****************************/
         //If a backslash is detected, the following character is inputted into the string array regularly
         //even if it is a special character such as a metacharacter or space. The following character
         //is then retrieved to continue checking the program.
@@ -163,8 +175,7 @@ int getword(char *w)
 
         }
 
-            
-        /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER**********************/
+        /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER***********************/
         //If the character is a meta character and there is a current word, then return the current wordsie
         //and ungetc will restore the stdin stream to the metachar for the next run
         if (metaCharacterCheck(iochar) == IS_META) {
