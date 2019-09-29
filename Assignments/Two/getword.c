@@ -8,7 +8,7 @@
 //  Due Date: October 9, 2019
 //  Assignment: Program 2
 //  File name: getword.c
-//  Compiler Version: XCode 10.2.1
+//  Compiler Version: XCode 11.0 (11A420a)
 //
 //  The getword function (line 135) examines successive words on the input stream (stdin) and returns the size
 //  of each word of the user input and adds each character into the w pointer. The driver program p1.c then

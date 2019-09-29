@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E9B9696923401E5F000E421D /* makefile in Sources */ = {isa = PBXBuildFile; fileRef = E9B9696623401E5F000E421D /* makefile */; };
 		E9B9696A23401E5F000E421D /* getword.c in Sources */ = {isa = PBXBuildFile; fileRef = E9B9696823401E5F000E421D /* getword.c */; };
+		E9B9696C23401EF3000E421D /* p2.c in Sources */ = {isa = PBXBuildFile; fileRef = E9B9696B23401EF3000E421D /* p2.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,6 +29,8 @@
 		E9B9696623401E5F000E421D /* makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = "<group>"; };
 		E9B9696723401E5F000E421D /* getword.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = getword.h; sourceTree = "<group>"; };
 		E9B9696823401E5F000E421D /* getword.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = getword.c; sourceTree = "<group>"; };
+		E9B9696B23401EF3000E421D /* p2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = p2.c; sourceTree = "<group>"; };
+		E9B9696D234021CE000E421D /* p2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = p2.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +66,8 @@
 				E9B9696623401E5F000E421D /* makefile */,
 				E9B9696723401E5F000E421D /* getword.h */,
 				E9B9696823401E5F000E421D /* getword.c */,
+				E9B9696B23401EF3000E421D /* p2.c */,
+				E9B9696D234021CE000E421D /* p2.h */,
 			);
 			path = Two;
 			sourceTree = "<group>";
@@ -123,6 +128,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E9B9696C23401EF3000E421D /* p2.c in Sources */,
 				E9B9696A23401E5F000E421D /* getword.c in Sources */,
 				E9B9696923401E5F000E421D /* makefile in Sources */,
 			);
