@@ -20,13 +20,23 @@ int parse() {
     return 0;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    //TODO: STEP 1 - Get name of file to open in argv[1]
+    //TODO: STEP 2 - Execute/open file of argv[1]
+    //TODO: STEP 3 - Issue error message if word not there
+    
+    printf("File name %s\n", argv[0]);
+    
+    
+    
+    
+    
+    
     for(;;) {
     printf("%%/%% \n");     //The user sees '%/% ' when input is needed
     }
-    
-    //TODO: STEP 1 - Getname
+
     
     return(EXIT_SUCCESS);
 }
