@@ -40,6 +40,9 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
+
+/******
+ 
 void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
     
     //memset(*nameOfInputFileRedirection, EMPTY, MAX_WORD_LENGTH);    //Removes already created garbage
@@ -89,6 +92,56 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
     //Get the word from the arrray that needs to be copied into here
 
     }
+ 
+ *****/
+
+void parse2(char cmd[], char *parameters[]) {
+    //char getwordArray[1024];
+    char line [1024];
+    char *array[100], *pointerCharacter;
+    int index = 0;
+    int i = 0;
+    int j = 0;
+    
+    //Reading in one line
+    for (;;) {
+        int c = fgetc (stdin);
+        line[index++] = (char) c;
+        if (c == '\n') break;
+    }
+    
+    if (index == 1) return;
+    pointerCharacter = strtok (line, "\n");
+    
+    //Parse the line into words
+    while (pointerCharacter != NULL) {
+        array[i++] = strdup(pointerCharacter);
+        pointerCharacter = strtok(NULL, "\n");
+    }
+    
+    //First word is the command
+    strcpy (cmd, array[0]);
+    
+    //Others are parameters
+    for (j = 0; j < i; j++)
+        parameters[j] = array[j];
+    parameters[j] = NULL;
+}
+    
+
+    char *parameterArray[MAX_WORD_LENGTH], *parameterPointer;
+    
+    
+    /*
+    if (getword(line) == -1)
+        exit(1);
+    
+    while (parameterPointer != NULL) {
+        parameterArray[i++] = strdup (parameterPointer);
+        parameterPointer = strtok(NULL, "\n");
+    } */
+
+
     
     
 
@@ -109,7 +162,32 @@ int main(int argc, char *argv[])
     /*********************THIS SECTION COPIES THE COMMAND LINE ARGUMENTS INTO THE ARGSLIST ARRAY****************************/
     //This outer for loop increments after each individual argument word
     
+    char cmd[100], command[100], *parameters[20];
+    char *envp[] = {(char *) "PATH=/bin", 0};
     
+    for(;;) {
+        printf("%%1%% ");
+        parse2(command, parameters);
+        if (fork() == 0) {
+            strcpy (cmd, "/bin/");
+            strcat (cmd, command);
+            execve (cmd, parameters, envp);
+        } else {
+            wait (NULL);
+        }
+        
+        if (strcmp (command, "exit") == 0)
+            break;
+    }
+    return 0;
+    
+    
+    
+    
+    
+    
+    
+    /*
     argv[0] = "./p2";
     argv[1] = "<";
     argv[2] = "hello";
@@ -148,5 +226,5 @@ int main(int argc, char *argv[])
     //TODO: STEP 3 - Issue error message if word not there
     
     
-    return(EXIT_SUCCESS);
+    return(EXIT_SUCCESS);*/
 }
