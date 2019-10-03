@@ -29,9 +29,11 @@
 #define START_INDEX 0
 #define EMPTY 0
 #define NOT_SET 0
+#define FILE_EXISTS 0
 #define SET 1
 #define MATCH 1
-#define FILE_EXISTS 0
+#define CMD_INDEX 0
+
 #define TERMINATED -1
 
 
@@ -172,13 +174,14 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-void parse3(char *argsLine) {
-    
+void parse3(char *argsLine, char command[], char *parameters[]) {
+
     char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];
     memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
     
     char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
+    //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
     int getwordFnResult;    //getword function result
     
@@ -196,6 +199,7 @@ void parse3(char *argsLine) {
     for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
+        //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
         if (strcmp(arrayOfArgsLine[loopIteration], "<")) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             if (inputRedirectionFlag == SET) {
@@ -205,6 +209,8 @@ void parse3(char *argsLine) {
                 //Saves the word after the '<' symbol into the inputFileName character array
                 inputFileName = arrayOfArgsLine[loopIteration++];
                 
+                //TODO: ONLY USED FOR DEBUGGING
+                /****
                 char cwd[MAX_WORD_LENGTH];
                 getcwd(cwd, sizeof(cwd));
                 chdir("/Users/jandomingo/Dev/CS570/Assignments/Two/");
@@ -213,6 +219,8 @@ void parse3(char *argsLine) {
                 strcat(cwd, inputFileName);
                 
                 printf("Current file looking at: %s\n", cwd);
+                //printf("Current path: %s", getenv("PATH"));
+                //TODO: UP TO HERE
                 
                 //If the filename exists then set the redirection flag to SET
                 //TODO: ACCESS NOT WORKING PROPERLY, SAYS UNEXISTING FILE EXISTS
@@ -220,16 +228,28 @@ void parse3(char *argsLine) {
                    inputRedirectionFlag = SET;
                     printf("FILE EXISTS");  //TODO: REMOVE THIS WHEN SOLVED. THIS SHOULD NOT APPER IN FINAL VERSION
                 } else {
-                    
                     perror("File cannot be located");
                 }
-            }
+            }****/
         }
+        
+        //This block handles all other commands (i.e. when the user did not input a metacharacter)
+        //In this case, the user could be entering a command to be executed in execvp or the first word
+        //has to be a file to read in.
+        //TODO: Add more flags as needed, double check to see if ampersandFlag NOT_SET is appropraite here
+        if (inputRedirectionFlag == NOT_SET && outputRedirectionFlag== NOT_SET && ampersandFlag == NOT_SET) {
+            command = arrayOfArgsLine[CMD_INDEX];
+            //parameters = arrayOfArgsLine[1];
+            
+        }
+            break;
+        
+        
     }
     
     
     
-    
+        /*
         while (getwordFnResult != 0 || getwordFnResult != -1)
         {
             if (getwordFnResult > 0) {
@@ -237,7 +257,10 @@ void parse3(char *argsLine) {
             }
         
         }
+         */
+        
     }
+}
 
     
 
@@ -255,19 +278,24 @@ void parse3(char *argsLine) {
 
 int main(int argc, char *argv[])
 {
-    /*********************THIS SECTION COPIES THE COMMAND LINE ARGUMENTS INTO THE ARGSLIST ARRAY****************************/
-    
     char *argsLine = malloc(MAX_CMD_LENGTH * sizeof(char));
-    char command[MAX_CMD_LENGTH];
-    char *parameters[20];
-    
+    char *command = malloc(MAX_CMD_LENGTH * sizeof(char));
+    char *parameter[20];
+
     for(;;) {
         printf("%%1%% ");
-        parse3(argsLine);
+        parse3(argsLine, command, parameter);
         
-        /*
+        char *name[1];
+        
+        //name[0] = "echo";
+        name[0] = "hi world";
+        
+        //execvp("echo", NULL);
+        //execvp (command, NULL);
+        
         if (fork() == 0) {
-            execvp (command, parameters);
+            execvp ("echo", name);
         } else {
             wait (NULL);
         }
@@ -275,7 +303,7 @@ int main(int argc, char *argv[])
         if (strcmp (command, "exit") == 0)
             break;
          
-         */
+         
         
         
     }
