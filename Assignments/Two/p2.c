@@ -241,6 +241,7 @@ void parse3(char *argsLine, char command[], char *parameters[]) {
         //TODO: Add more flags as needed, double check to see if ampersandFlag NOT_SET is appropraite here
         if (inputRedirectionFlag == NOT_SET && outputRedirectionFlag== NOT_SET && ampersandFlag == NOT_SET) {
             strcpy(command, arrayOfArgsLine[CMD_INDEX]);
+            *parameters = arrayOfArgsLine[1];
             //strcpy(*parameters, *arrayOfArgsLine);
             
         }
@@ -282,20 +283,27 @@ int main(int argc, char *argv[])
 {
     char *argsLine = malloc(MAX_CMD_LENGTH * sizeof(char));
     char *command = malloc(MAX_CMD_LENGTH * sizeof(char));
-    char *parameter[20];
+    char *parameters = malloc(MAX_CMD_LENGTH * sizeof(char));
+    
 
     for(;;) {
         printf("%%1%% ");
-        parse3(argsLine, command, parameter);
+        parse3(argsLine, command, &parameters);
         
         char *name[5];
         
         //name[0] = "echo";
-        name[0] = "hi world";
-        name[1] = "two worlds";
+        name[0] = "echo two worlds";
+        name[1] = "three worlds";
+        name[2] = "is this printed";
+    
+        execvp (command, name);
+        //execvp (command, &parameters);
         
         if (fork() == 0) {
-            execvp ("echo", name);
+            execvp("echo", name);
+            execvp (command, &parameters);
+            fflush(stdout);
             return -1;  //TODO: NOT SURE IF THIS IS NECESSARY
         } else {
             wait (NULL);
