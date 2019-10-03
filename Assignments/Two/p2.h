@@ -14,7 +14,7 @@
 #define p2_h
 
 #include <stdio.h>
-include "getword.h"
+#include "getword.h"
 #define MAXITEM 100 /* max number of words per line */
 
 

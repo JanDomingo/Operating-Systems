@@ -24,9 +24,15 @@
 #define MAX_CMD_LENGTH 100
 #define MAX_PRM_LENGTH 20   //Max parameter length
 #define MAX_WORD_LENGTH 255
+#define START_OF_ARRAY 0
+#define START_INDEX 0
 #define EMPTY 0
 #define NOT_SET 0
 #define SET 1
+#define MATCH 1
+#define FILE_EXISTS 1
+#define TERMINATED -1
+
 
 //Global Variables
 int inputRedirectionFlag = NOT_SET;
@@ -48,7 +54,6 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
     
     //memset(*nameOfInputFileRedirection, EMPTY, MAX_WORD_LENGTH);    //Removes already created garbage
-
     //This loop cycles through all of the arguments and compares it with flags that needs to be set
     for (int loopIteration = EMPTY; loopIteration < argsCount; loopIteration++) {
         
@@ -92,29 +97,42 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
     //TODO: Use getword to separate the words
     //TODO: Use the argsList array as stdin for getword function
     //Get the word from the arrray that needs to be copied into here
-
     }
  
  *****/
 
-void parse2(char cmd[], char *parameters[]) {
+/**void parse2(char cmd[], char *parameters[]) {
     //char getwordArray[1024];
-    char line [1024];
+    char inputLine [1024];
+    char argsList[MAX_ARGS][MAX_WORD_LENGTH];
     char *array[100];
-    char *pointerCharacter;
+    char *pointerCharacter = malloc (1024 * sizeof(char));
+    char *arrayCopyPtr;
     int index = 0;
     int i = 0;
     int j = 0;
     
+    memset(*argsList, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));
+    
     //Reading in one line
     for (;;) {
         int c = fgetc (stdin);
-        line[index++] = (char) c;
-        if (c == '\n') break;
+        inputLine[index++] = (char) c;  //stdin in the command line input
+        if (c == '\n') {
+            break;
+        }
     }
     
-    if (index == 1) return;
-    pointerCharacter = strtok (line, "\n");
+    //Copies the line and parses into individual individual words
+    pointerCharacter = strtok (inputLine, "\n");
+    int wordIndex = 0;
+    int charIndex = 0;
+    
+    //FIGURE OUT WHAT THIS DOES
+    if (index == 1)
+        return;
+    
+    //pointerCharacter = strtok (inputLine, "\n");
     
     //Parse the line into words
     while (pointerCharacter != NULL) {
@@ -133,10 +151,10 @@ void parse2(char cmd[], char *parameters[]) {
     if (access(cmd, F_OK) != -1) {
         printf("File exists\n");
     }
-}
+} **/
     
 
-    char *parameterArray[MAX_WORD_LENGTH], *parameterPointer;
+    //char *parameterArray[MAX_WORD_LENGTH], *parameterPointer;
     
     
     /*
@@ -148,8 +166,70 @@ void parse2(char cmd[], char *parameters[]) {
         parameterPointer = strtok(NULL, "\n");
     } */
 
-
+/************************************************************************************************************/
+/**********************************THIS IS THE PARSE FUNCTION************************************/
+/************************************************************************************************************/
+//This function is responsible for the syntactic analysis
+//This will set appropriate flags when getword() encounters words that are metacharacters
+void parse3(char *argsLine) {
     
+    char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];
+    memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
+    int indexArrayOfArgsLine = START_OF_ARRAY;
+    
+    char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
+    
+    int getwordResult;
+    
+    //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
+    //The words are then stored in the arrayOfArgsLine two dimensional array
+    for (;;) {
+        getwordResult = getword(argsLine);
+        strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
+        indexArrayOfArgsLine++;
+        if (getwordResult == TERMINATED) break;
+    }
+    
+    //This for loop iterates through arrayOfArgsLine and searches for metacharacters
+    int loopIteration;
+    for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
+        
+        //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
+        if (strcmp(arrayOfArgsLine[loopIteration], "<")) {
+            //If the inputRedirectionFlag has already been set from a prior call then print an error
+            if (inputRedirectionFlag == SET) {
+                perror("Cannot have more than one input redirections");
+            } else {
+                //Saves the word after the '<' symbol into the inputFileName character array
+                inputFileName = arrayOfArgsLine[loopIteration++];
+                char cwd[MAX_WORD_LENGTH];
+                getcwd(cwd, sizeof(cwd));
+                strcat(cwd, "/");
+                strcat(cwd, inputFileName);
+                
+                //If the filename exists then set the redirection flag to SET
+                if(access(cwd, F_OK) == FILE_EXISTS) {
+                   inputRedirectionFlag = SET;
+                    printf("SUCCESS READING FILE!!!!!");
+                } else {
+                    perror("File cannot be located");
+                }
+            }
+        }
+    }
+    
+    
+    
+    
+        while (getwordResult != 0 || getwordResult != -1)
+        {
+            if (getwordResult > 0) {
+                printf("%s", argsLine);
+            }
+        
+        }
+    }
+
     
 
     
@@ -168,12 +248,15 @@ int main(int argc, char *argv[])
 {
     /*********************THIS SECTION COPIES THE COMMAND LINE ARGUMENTS INTO THE ARGSLIST ARRAY****************************/
     
+    char *argsLine = malloc(MAX_CMD_LENGTH * sizeof(char));
     char command[MAX_CMD_LENGTH];
     char *parameters[20];
     
     for(;;) {
         printf("%%1%% ");
-        parse2(command, parameters);
+        parse3(argsLine);
+        
+        /*
         if (fork() == 0) {
             execvp (command, parameters);
         } else {
@@ -182,6 +265,8 @@ int main(int argc, char *argv[])
         
         if (strcmp (command, "exit") == 0)
             break;
+         
+         */
         
         
     }
@@ -226,7 +311,6 @@ int main(int argc, char *argv[])
     
     
     
-
     //TODO: STEP 1 - Get name of file to open in argv[1]
     //TODO: STEP 2 - Execute/open file of argv[1]
     //TODO: STEP 3 - Issue error message if word not there
