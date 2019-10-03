@@ -18,6 +18,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/errno.h>
 #include "getword.h"
 
 #define MAX_ARGS 100
@@ -30,7 +31,7 @@
 #define NOT_SET 0
 #define SET 1
 #define MATCH 1
-#define FILE_EXISTS 1
+#define FILE_EXISTS 0
 #define TERMINATED -1
 
 
@@ -179,15 +180,15 @@ void parse3(char *argsLine) {
     
     char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
     
-    int getwordResult;
+    int getwordFnResult;    //getword function result
     
     //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
-        getwordResult = getword(argsLine);
+        getwordFnResult = getword(argsLine);
         strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
         indexArrayOfArgsLine++;
-        if (getwordResult == TERMINATED) break;
+        if (getwordFnResult == TERMINATED) break;
     }
     
     //This for loop iterates through arrayOfArgsLine and searches for metacharacters
@@ -198,20 +199,28 @@ void parse3(char *argsLine) {
         if (strcmp(arrayOfArgsLine[loopIteration], "<")) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             if (inputRedirectionFlag == SET) {
+                errno = EINVAL;
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
                 inputFileName = arrayOfArgsLine[loopIteration++];
+                
                 char cwd[MAX_WORD_LENGTH];
+                getcwd(cwd, sizeof(cwd));
+                chdir("/Users/jandomingo/Dev/CS570/Assignments/Two/");
                 getcwd(cwd, sizeof(cwd));
                 strcat(cwd, "/");
                 strcat(cwd, inputFileName);
                 
+                printf("Current file looking at: %s\n", cwd);
+                
                 //If the filename exists then set the redirection flag to SET
+                //TODO: ACCESS NOT WORKING PROPERLY, SAYS UNEXISTING FILE EXISTS
                 if(access(cwd, F_OK) == FILE_EXISTS) {
                    inputRedirectionFlag = SET;
-                    printf("SUCCESS READING FILE!!!!!");
+                    printf("FILE EXISTS");  //TODO: REMOVE THIS WHEN SOLVED. THIS SHOULD NOT APPER IN FINAL VERSION
                 } else {
+                    
                     perror("File cannot be located");
                 }
             }
@@ -221,9 +230,9 @@ void parse3(char *argsLine) {
     
     
     
-        while (getwordResult != 0 || getwordResult != -1)
+        while (getwordFnResult != 0 || getwordFnResult != -1)
         {
-            if (getwordResult > 0) {
+            if (getwordFnResult > 0) {
                 printf("%s", argsLine);
             }
         
