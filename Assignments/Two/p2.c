@@ -21,6 +21,8 @@
 #include "getword.h"
 
 #define MAX_ARGS 100
+#define MAX_CMD_LENGTH 100
+#define MAX_PRM_LENGTH 20   //Max parameter length
 #define MAX_WORD_LENGTH 255
 #define EMPTY 0
 #define NOT_SET 0
@@ -98,7 +100,8 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
 void parse2(char cmd[], char *parameters[]) {
     //char getwordArray[1024];
     char line [1024];
-    char *array[100], *pointerCharacter;
+    char *array[100];
+    char *pointerCharacter;
     int index = 0;
     int i = 0;
     int j = 0;
@@ -126,6 +129,10 @@ void parse2(char cmd[], char *parameters[]) {
     for (j = 0; j < i; j++)
         parameters[j] = array[j];
     parameters[j] = NULL;
+    
+    if (access(cmd, F_OK) != -1) {
+        printf("File exists\n");
+    }
 }
     
 
@@ -160,24 +167,23 @@ void parse2(char cmd[], char *parameters[]) {
 int main(int argc, char *argv[])
 {
     /*********************THIS SECTION COPIES THE COMMAND LINE ARGUMENTS INTO THE ARGSLIST ARRAY****************************/
-    //This outer for loop increments after each individual argument word
     
-    char cmd[100], command[100], *parameters[20];
-    char *envp[] = {(char *) "PATH=/bin", 0};
+    char command[MAX_CMD_LENGTH];
+    char *parameters[20];
     
     for(;;) {
         printf("%%1%% ");
         parse2(command, parameters);
         if (fork() == 0) {
-            strcpy (cmd, "/bin/");
-            strcat (cmd, command);
-            execve (cmd, parameters, envp);
+            execvp (command, parameters);
         } else {
             wait (NULL);
         }
         
         if (strcmp (command, "exit") == 0)
             break;
+        
+        
     }
     return 0;
     
