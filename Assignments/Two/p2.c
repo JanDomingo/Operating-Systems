@@ -176,11 +176,12 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
 //This will set appropriate flags when getword() encounters words that are metacharacters
 void parse3(char *argsLine, char command[], char *parameters[]) {
 
-    char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];
+    char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
     memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
     
     char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
+    char *parameterPtr = malloc(MAX_WORD_LENGTH * sizeof(char));
     //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
     int getwordFnResult;    //getword function result
@@ -207,7 +208,8 @@ void parse3(char *argsLine, char command[], char *parameters[]) {
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
-                inputFileName = arrayOfArgsLine[loopIteration++];
+                inputFileName = arrayOfArgsLine[++loopIteration];
+                parameterPtr = *(arrayOfArgsLine + 1);  //Points to the same place as the inputFileName
                 
                 //TODO: ONLY USED FOR DEBUGGING
                 /****
@@ -238,8 +240,8 @@ void parse3(char *argsLine, char command[], char *parameters[]) {
         //has to be a file to read in.
         //TODO: Add more flags as needed, double check to see if ampersandFlag NOT_SET is appropraite here
         if (inputRedirectionFlag == NOT_SET && outputRedirectionFlag== NOT_SET && ampersandFlag == NOT_SET) {
-            command = arrayOfArgsLine[CMD_INDEX];
-            //parameters = arrayOfArgsLine[1];
+            strcpy(command, arrayOfArgsLine[CMD_INDEX]);
+            //strcpy(*parameters, *arrayOfArgsLine);
             
         }
             break;
@@ -286,28 +288,25 @@ int main(int argc, char *argv[])
         printf("%%1%% ");
         parse3(argsLine, command, parameter);
         
-        char *name[1];
+        char *name[5];
         
         //name[0] = "echo";
         name[0] = "hi world";
-        
-        //execvp("echo", NULL);
-        //execvp (command, NULL);
+        name[1] = "two worlds";
         
         if (fork() == 0) {
             execvp ("echo", name);
+            return -1;  //TODO: NOT SURE IF THIS IS NECESSARY
         } else {
             wait (NULL);
+            printf("%s", "parent");
         }
         
-        if (strcmp (command, "exit") == 0)
-            break;
-         
-         
+        exit(0);
         
         
     }
-    return 0;
+    return (EXIT_SUCCESS);
     
     
     
