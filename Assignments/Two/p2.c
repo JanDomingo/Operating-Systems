@@ -52,7 +52,7 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-void parse(char *argsLine, char command[], char *parameters[]) {
+void parse(char *argsLine, char command[], char *parameters[], int argc) {
 
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
     //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
@@ -67,6 +67,7 @@ void parse(char *argsLine, char command[], char *parameters[]) {
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
         
+        //TODO: FIGURE OUT IF arrayOfArgsLine SHOULD STILL SAVE SPACE CHARACTERS
         getwordFnResult = getword(argsLine);
         //Copies words into arrayOfArgsLine which is an array of all our arguments
         arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
@@ -99,22 +100,39 @@ void parse(char *argsLine, char command[], char *parameters[]) {
         }
         
         
-        //This block handles the case of "echo" commands
-        //In this case, the user could be entering a command to be executed in execvp or the first word
-        //has to be a file to read in.
-        if ((strcmp(arrayOfArgsLine[loopIteration], "echo")) == MATCH) {
+        //This block handles the case of "echo" and "ls" commands
+        if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
+            (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
             strcpy(command, arrayOfArgsLine[loopIteration]);
+            
+            parameters[indexArrayOfArgsLine] = strdup(argsLine);
+
         }
         
         //This block handles the 'cd' commands and uses chdir() to change the directory
         if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
             char chPath[MAX_WORD_LENGTH] = {EMPTY};  //chPath is shortened for change path
             strcpy(chPath, arrayOfArgsLine[++loopIteration]);
+            
+            //If cd is the only argument then change directory to home
+            //TODO: ARGC NOT WORKING PROPERLY, ANY AMOUNT OF WORDS IS ALWAYS 1
+            if (strcmp(arrayOfArgsLine[loopIteration], "") == MATCH) {
+                char *homeDir = getenv("HOME");
+                chdir(homeDir);
+                printf("Success");
+                break;
+            }
+            
+            //if the path to change directory cannot be found then print an error
+            //TODO: CHECK IF A FUNCTION NEEDS TO BE CALLED TO GET THE PROPER PATH
             if ((chdir(chPath) != 0)) {
                 perror("chdir() failed");
+                break;
             }
-             
+            
+            chdir(chPath);
         }
+        
     }
 }
 
@@ -132,12 +150,18 @@ int main(int argc, char *argv[])
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
     char *parameters[MAX_ARGS] = {NULL};
     
-    
-    /**********THIS SECTION HANDLES WHEN THE USER INPUTS 'cd'************/
-    
     for(;;) {
         printf("%%1%% \n");
-        parse(argsLine, command, parameters);
+        fflush(NULL);
+        printf("Argc: %d\n", argc);
+        
+        //Argument Descriptions:
+        //argsLine will store the characters that were passed in by the getword() function
+        //command will store the words of user commands such as "cd" and "ls"
+        //parameters is an array of pointers to char with each element being a word from the cmd line input
+        parse(argsLine, command, parameters, argc);
+        
+        
         
         //execvp (command, parameters);
         //char *name[5];
@@ -146,9 +170,9 @@ int main(int argc, char *argv[])
         //name[0] = "echo two worlds";
         //name[1] = "three worlds";
         //name[2] = "is this printed";
-    
         //execvp (command, name);
         //execvp (command, &parameters);
+        
         
         pid_t pid = fork();
         if (pid == FORK_FAILED) {
@@ -158,7 +182,7 @@ int main(int argc, char *argv[])
         if (pid == CHILD) {
             execvp (command, parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
             //execvp("echo", name);
-            //execvp (command, parameters);  //TODO: THIS IS THE NEXT STEP!!!!!! MAKE SURE THAT PARAMETER VALUES ARE BEING PASSED IN PROPERLY
+            //execvp (command, parameters);
             //fflush(stdout);
             perror("execvp failed");
             exit(1);
@@ -169,15 +193,15 @@ int main(int argc, char *argv[])
             int status;
             pid = wait(&status);
             if (WIFEXITED(status)) {
-                printf("pid %d exited with status %d\n", pid, WEXITSTATUS(status));
+                //printf("pid %d exited with status %d\n", pid, WEXITSTATUS(status));
             } else {
-                printf("pid %d exited abnormally\n", pid);
+                //printf("pid %d exited abnormally\n", pid);
             }
-            
-            printf("%s", "parent\n");
+            //printf("%s", "parent\n");
         }
         printf("p2 terminated.\n");
-        exit(1);
+        break;
+        //exit(1);
     }
     
     return (EXIT_SUCCESS);
