@@ -30,12 +30,12 @@
 #define EMPTY 0
 #define NOT_SET 0
 #define FILE_EXISTS 0
-#define CMD_INDEX 0
 #define CHILD 0
 #define SET 1
 #define MATCH 0
 #define FORK_FAILED -1
 #define TERMINATED -1
+#define LINES_TO_CREATE 1
 
 
 //Global Variables
@@ -52,7 +52,7 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
+void parse(char *argsLine, char command[], char *parameters[]) {
 
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
     //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
@@ -61,22 +61,22 @@ void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
     char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
     //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
-    int getwordFnResult;    //getword function result
+    int getwordFnResult;    //fn means function
     
     //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
+        
         getwordFnResult = getword(argsLine);
-        
-        //Copies words into arrayOfArgsLine which is an array of chars
+        //Copies words into arrayOfArgsLine which is an array of all our arguments
         arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
-        //strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
-        
-        //Copies words into arrayOfArgsLinePtr which is an array of char pointers
-        arrayOfArgsLinePtr[indexArrayOfArgsLine] = strdup(argsLine);
-        
+        //Each element of this array is a word of the command line input. This provides a reference to main()
+        parameters[indexArrayOfArgsLine] = strdup(argsLine);
         indexArrayOfArgsLine++;
-        if (getwordFnResult == TERMINATED) break;
+        
+        //Once EOF has been reached, then stop copying words into arrays and exit loop.
+        if (getwordFnResult == TERMINATED)
+            break;
     }
     
     //This for loop iterates through arrayOfArgsLine and searches for metacharacters
@@ -89,23 +89,31 @@ void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             printf("%s", arrayOfArgsLine[loopIteration]);
             if (inputRedirectionFlag == SET) {
-                errno = EINVAL;
+                errno = EINVAL;     //This errorno displays an invalid argument error for perror
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
                 inputFileName = arrayOfArgsLine[++loopIteration];
-        }
-        
-        //This block handles all other commands (i.e. when the user did not input a metacharacter) /TODO: UPDATE THIS DESCRIPTION
-        //In this case, the user could be entering a command to be executed in execvp or the first word
-        //has to be a file to read in.
-        //TODO: Add more flags as needed, double check to see if ampersandFlag NOT_SET is appropraite here
-            if (inputRedirectionFlag == NOT_SET &&
-                outputRedirectionFlag == NOT_SET &&
-                ampersandFlag == NOT_SET) {
-                strcpy(command, arrayOfArgsLine[CMD_INDEX]);
             }
             break;
+        }
+        
+        
+        //This block handles the case of "echo" commands
+        //In this case, the user could be entering a command to be executed in execvp or the first word
+        //has to be a file to read in.
+        if ((strcmp(arrayOfArgsLine[loopIteration], "echo")) == MATCH) {
+            strcpy(command, arrayOfArgsLine[loopIteration]);
+        }
+        
+        //This block handles the 'cd' commands and uses chdir() to change the directory
+        if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
+            char chPath[MAX_WORD_LENGTH] = {EMPTY};  //chPath is shortened for change path
+            strcpy(chPath, arrayOfArgsLine[++loopIteration]);
+            if ((chdir(chPath) != 0)) {
+                perror("chdir() failed");
+            }
+             
         }
     }
 }
@@ -148,7 +156,7 @@ int main(int argc, char *argv[])
             exit(9);
         }
         if (pid == CHILD) {
-            execvp (command, parameters);
+            execvp (command, parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
             //execvp("echo", name);
             //execvp (command, parameters);  //TODO: THIS IS THE NEXT STEP!!!!!! MAKE SURE THAT PARAMETER VALUES ARE BEING PASSED IN PROPERLY
             //fflush(stdout);
