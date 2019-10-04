@@ -33,7 +33,7 @@
 #define CMD_INDEX 0
 #define CHILD 0
 #define SET 1
-#define MATCH 1
+#define MATCH 0
 #define FORK_FAILED -1
 #define TERMINATED -1
 
@@ -54,12 +54,11 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 //This will set appropriate flags when getword() encounters words that are metacharacters
 void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
 
-    char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
-    memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
+    char *arrayOfArgsLine[MAX_ARGS] = {NULL};  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
+    //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
     
     char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
-    char *parameterPtr = malloc(MAX_WORD_LENGTH * sizeof(char));
     //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
     int getwordFnResult;    //getword function result
@@ -70,7 +69,8 @@ void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
         getwordFnResult = getword(argsLine);
         
         //Copies words into arrayOfArgsLine which is an array of chars
-        strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
+        arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
+        //strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
         
         //Copies words into arrayOfArgsLinePtr which is an array of char pointers
         arrayOfArgsLinePtr[indexArrayOfArgsLine] = strdup(argsLine);
@@ -85,17 +85,15 @@ void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
         
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
-        //TODO: FIX THIS REDIRECTION INPUT AS IT IS TRUE EVERYTIME IN ALL CASES
-        if (strcmp(arrayOfArgsLine[loopIteration], "<")) {
+        if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
+            printf("%s", arrayOfArgsLine[loopIteration]);
             if (inputRedirectionFlag == SET) {
                 errno = EINVAL;
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
                 inputFileName = arrayOfArgsLine[++loopIteration];
-                parameterPtr = *(arrayOfArgsLine + 1);  //Points to the same place as the inputFileName
-                
         }
         
         //This block handles all other commands (i.e. when the user did not input a metacharacter) /TODO: UPDATE THIS DESCRIPTION
@@ -112,13 +110,6 @@ void parse(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
     }
 }
 
-    
-
-    
-    
-    
-    
-    
     
 
 /************************************************************************************************************/
