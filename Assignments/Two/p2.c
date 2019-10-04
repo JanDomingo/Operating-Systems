@@ -33,6 +33,7 @@
 #define CHILD 0
 #define SET 1
 #define MATCH 0
+#define FIRST_CMD 0
 #define FORK_FAILED -1
 #define TERMINATED -1
 #define LINES_TO_CREATE 1
@@ -119,11 +120,12 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
             if (strcmp(arrayOfArgsLine[loopIteration], "") == MATCH) {
                 char *homeDir = getenv("HOME");
                 chdir(homeDir);
-                printf("Success");
+                printf("%s\n", homeDir);
+                printf("SUCCESS: Changed to home directory\n");
                 break;
             }
             
-            //if the path to change directory cannot be found then print an error
+            //If the path to change directory cannot be found then print an error
             //TODO: CHECK IF A FUNCTION NEEDS TO BE CALLED TO GET THE PROPER PATH
             if ((chdir(chPath) != 0)) {
                 perror("chdir() failed");
@@ -131,8 +133,20 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
             }
             
             chdir(chPath);
+            printf("SUCCESS: Changed to %s directory\n\n", chPath);
+
         }
         
+        //This block handles the 'pwd' command and prints the current working directory
+        //pwd only works if it is the first command
+        static int pwd_Print = NOT_SET;
+        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
+            if (pwd_Print == NOT_SET) {
+                char cwd[MAX_WORD_LENGTH] = {EMPTY};
+                printf("%s\n", getcwd(cwd, MAX_WORD_LENGTH));
+            }
+            pwd_Print = SET;
+        }
     }
 }
 
@@ -153,7 +167,8 @@ int main(int argc, char *argv[])
     for(;;) {
         printf("%%1%% \n");
         fflush(NULL);
-        printf("Argc: %d\n", argc);
+        
+        //printf("Argc: %d\n", argc);
         
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
