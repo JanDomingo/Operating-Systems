@@ -37,6 +37,7 @@
 #define FORK_FAILED -1
 #define TERMINATED -1
 #define LINES_TO_CREATE 1
+#define PWD_PATH /usr/bin/pwd
 
 
 //Global Variables
@@ -116,7 +117,6 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
             strcpy(chPath, arrayOfArgsLine[++loopIteration]);
             
             //If cd is the only argument then change directory to home
-            //TODO: ARGC NOT WORKING PROPERLY, ANY AMOUNT OF WORDS IS ALWAYS 1
             if (strcmp(arrayOfArgsLine[loopIteration], "") == MATCH) {
                 char *homeDir = getenv("HOME");
                 chdir(homeDir);
@@ -140,12 +140,19 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
         //This block handles the 'pwd' command and prints the current working directory
         //pwd only works if it is the first command
         static int pwd_Print = NOT_SET;
-        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
+        if (((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) ||
+            ((strcmp(arrayOfArgsLine[FIRST_CMD], "/usr/bin/pwd")) == MATCH)) {
+                //if (access to usr/bin/pwd succeeds then run that program)
+            //TODO: FIX THIS SO THAT IT ACTUALLLY LOOKS INSIDE USR BIN TO SEE IF IT IS A REAL EXECUTABLE
             if (pwd_Print == NOT_SET) {
-                char cwd[MAX_WORD_LENGTH] = {EMPTY};
-                printf("%s\n", getcwd(cwd, MAX_WORD_LENGTH));
+                strcpy(command, arrayOfArgsLine[FIRST_CMD]);
             }
             pwd_Print = SET;
+        }
+        
+        //This block handles if 'done' is inputted as the first word in the command line
+        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "done")) == MATCH) {
+            exit(1);
         }
     }
 }
@@ -176,9 +183,6 @@ int main(int argc, char *argv[])
         //parameters is an array of pointers to char with each element being a word from the cmd line input
         parse(argsLine, command, parameters, argc);
         
-        
-        
-        //execvp (command, parameters);
         //char *name[5];
         
         //name[0] = "echo";
@@ -186,7 +190,7 @@ int main(int argc, char *argv[])
         //name[1] = "three worlds";
         //name[2] = "is this printed";
         //execvp (command, name);
-        //execvp (command, &parameters);
+        //execvp (command, parameters);
         
         
         pid_t pid = fork();
@@ -195,7 +199,7 @@ int main(int argc, char *argv[])
             exit(9);
         }
         if (pid == CHILD) {
-            execvp (command, parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
+            execvp (command, parameters);
             //execvp("echo", name);
             //execvp (command, parameters);
             //fflush(stdout);

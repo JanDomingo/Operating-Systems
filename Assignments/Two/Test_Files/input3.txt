@@ -1,5 +1,5 @@
 cd
-/user/bin/pwd
+/usr/bin/pwd
 echo done is an alternate termination signal
 echo ...but ONLY when "done" is the first word:
 done extra ignored cruft
