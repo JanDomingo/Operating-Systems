@@ -174,7 +174,7 @@ void parse(char argsList[MAX_ARGS][MAX_WORD_LENGTH], int argsCount) {
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-void parse3(char *argsLine, char command[], char *parameters[]) {
+void parse3(char *argsLine, char command[], char *arrayOfArgsLinePtr[]) {
 
     char arrayOfArgsLine[MAX_CMD_LENGTH][MAX_WORD_LENGTH];  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
     memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
@@ -190,7 +190,13 @@ void parse3(char *argsLine, char command[], char *parameters[]) {
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
         getwordFnResult = getword(argsLine);
+        
+        //Copies words into arrayOfArgsLine which is an array of chars
         strcpy(arrayOfArgsLine[indexArrayOfArgsLine], argsLine);
+        
+        //Copies words into arrayOfArgsLinePtr which is an array of char pointers
+        arrayOfArgsLinePtr[indexArrayOfArgsLine] = strdup(argsLine);
+        
         indexArrayOfArgsLine++;
         if (getwordFnResult == TERMINATED) break;
     }
@@ -241,7 +247,7 @@ void parse3(char *argsLine, char command[], char *parameters[]) {
         //TODO: Add more flags as needed, double check to see if ampersandFlag NOT_SET is appropraite here
         if (inputRedirectionFlag == NOT_SET && outputRedirectionFlag== NOT_SET && ampersandFlag == NOT_SET) {
             strcpy(command, arrayOfArgsLine[CMD_INDEX]);
-            *parameters = arrayOfArgsLine[1];
+            //*parameters = arrayOfArgsLine[1];
             //strcpy(*parameters, *arrayOfArgsLine);
             
         }
@@ -283,28 +289,35 @@ int main(int argc, char *argv[])
 {
     char *argsLine = malloc(MAX_CMD_LENGTH * sizeof(char));
     char *command = malloc(MAX_CMD_LENGTH * sizeof(char));
-    char *parameters = malloc(MAX_CMD_LENGTH * sizeof(char));
+    //char *parameters = malloc(MAX_CMD_LENGTH * sizeof(char));
+    //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
+    char *parameters[MAX_ARGS] = {EMPTY};
     
 
     for(;;) {
         printf("%%1%% ");
-        parse3(argsLine, command, &parameters);
+        parse3(argsLine, command, parameters);
         
-        char *name[5];
+        //execvp (command, parameters);
+        //char *name[5];
         
         //name[0] = "echo";
-        name[0] = "echo two worlds";
-        name[1] = "three worlds";
-        name[2] = "is this printed";
+        //name[0] = "echo two worlds";
+        //name[1] = "three worlds";
+        //name[2] = "is this printed";
     
-        execvp (command, name);
+        //execvp (command, name);
         //execvp (command, &parameters);
         
         if (fork() == 0) {
-            execvp("echo", name);
-            execvp (command, &parameters);
-            fflush(stdout);
-            return -1;  //TODO: NOT SURE IF THIS IS NECESSARY
+            execvp (command, parameters);
+            //execvp("echo", name);
+            //execvp (command, parameters);  //TODO: THIS IS THE NEXT STEP!!!!!! MAKE SURE THAT PARAMETER VALUES ARE BEING PASSED IN PROPERLY
+            //fflush(stdout);
+            
+            
+            exit(9);
+            
         } else {
             wait (NULL);
             printf("%s", "parent");
