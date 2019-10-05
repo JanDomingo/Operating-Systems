@@ -91,7 +91,7 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             printf("%s", arrayOfArgsLine[loopIteration]);
             if (inputRedirectionFlag == SET) {
-                errno = EINVAL;     //This errorno displays an invalid argument error for perror
+                //errno = EINVAL;     //This errorno displays an invalid argument error for perror
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
@@ -142,8 +142,11 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
         static int pwd_Print = NOT_SET;
         if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
             if (pwd_Print == NOT_SET) {
-                char cwd[MAX_WORD_LENGTH] = {EMPTY};
-                printf("%s\n", getcwd(cwd, MAX_WORD_LENGTH));
+       
+                //char cwd[MAX_WORD_LENGTH] = {EMPTY};
+                //getcwd(cwd, MAX_WORD_LENGTH);
+                strcpy(command, arrayOfArgsLine[FIRST_CMD]);
+                parameters[1] = NULL; //Sets parameter to NULL because EOF was inputting itself as '\0'
             }
             pwd_Print = SET;
         }
@@ -166,7 +169,7 @@ int main(int argc, char *argv[])
     
     for(;;) {
         printf("%%1%% \n");
-        fflush(NULL);
+        //fflush(NULL);
         
         //printf("Argc: %d\n", argc);
         
@@ -188,37 +191,53 @@ int main(int argc, char *argv[])
         //execvp (command, name);
         //execvp (command, &parameters);
         
+
         
         pid_t pid = fork();
+        
+        printf("PID PID: %d\n", pid);
         if (pid == FORK_FAILED) {
             perror("Fork Failed");
-            exit(9);
+            exit(1);
         }
         if (pid == CHILD) {
+            printf("Child PID: %d\n", pid);
             execvp (command, parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
             //execvp("echo", name);
             //execvp (command, parameters);
             //fflush(stdout);
-            perror("execvp failed");
-            exit(1);
+            
+            perror("EXECVP FAILED");
             
             //exit(9);
             
-        } else {
-            int status;
-            pid = wait(&status);
-            if (WIFEXITED(status)) {
-                //printf("pid %d exited with status %d\n", pid, WEXITSTATUS(status));
-            } else {
-                //printf("pid %d exited abnormally\n", pid);
-            }
-            //printf("%s", "parent\n");
         }
-        printf("p2 terminated.\n");
-        break;
+        
+        //THIS IS NOW THE PARENT PROCESS
+        wait(NULL);
+        printf("Parent PID: %d\n", pid);
+        exit(0);
+        
+        
+        
+        
+        
+        /*
+        int status;
+        pid = wait(&status);
+        
+        if (WIFEXITED(status)) {
+            //printf("pid %d exited with status %d\n", pid, WEXITSTATUS(status));
+        } else {
+            //printf("pid %d exited abnormally\n", pid);
+        }*/
+        //printf("%s", "parent\n");
+        
+
         //exit(1);
     }
     
-    return (EXIT_SUCCESS);
+    printf("p2 terminated.\n");
+    exit(0);
     
 }
