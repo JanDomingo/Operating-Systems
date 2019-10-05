@@ -220,9 +220,11 @@ int main(int argc, char *argv[])
     char argsLine[MAX_ARGS];
     //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
-    char *parameters[MAX_ARGS] = {NULL};
+
     
     for(;;) {
+        char *parameters[MAX_ARGS] = {NULL};
+        //parameters[MAX_ARGS] = NULL;
         printf("%%1%% \n");
         fflush(stdin);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
         //fflush(NULL);
