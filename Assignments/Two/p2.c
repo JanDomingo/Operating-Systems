@@ -38,7 +38,7 @@
 #define TERMINATED -1
 #define LINES_TO_CREATE 1
 #define BUILTINS 0
-#define COMMAND 1
+#define EXECUTABLE 1
 
 //Global Variables
 int inputRedirectionFlag = NOT_SET;
@@ -54,25 +54,29 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char command[], char *parameters[]) {
-
+int parse(char *argsLine, char *parameters[]) {
+    
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
     
-    char *inputFileName = malloc(MAX_WORD_LENGTH * sizeof(char));
+    //char *inputFileName = malloc(MAX_WORD_LENGTH);
     //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
     int getwordFnResult;    //fn means function
     int wordCount = EMPTY;
     int breakoutParseFn = EMPTY;
+    
+    
+    
+    
     //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
         
         getwordFnResult = getword(argsLine);
         
-        if (getwordFnResult > 0) {
+        if (getwordFnResult > EMPTY) {
             //Copies words into arrayOfArgsLine which is an array of all our arguments
             arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
             parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
@@ -89,15 +93,21 @@ int parse(char *argsLine, char command[], char *parameters[]) {
             break;
         }
     }
-                //If the path to change directory cannot be found then print an error
+    //If the path to change directory cannot be found then print an error
     if (breakoutParseFn == TERMINATED) {
         return TERMINATED;
     }
     
+    
+    
+    
+    
+    
+    
     //This for loop iterates through arrayOfArgsLine and searches for metacharacters
     int loopIteration;
-    int copyOfIndexArrayOfArgsLine = indexArrayOfArgsLine;
-    for (loopIteration = START_OF_ARRAY; loopIteration < copyOfIndexArrayOfArgsLine; loopIteration++) {
+    
+    for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
@@ -109,19 +119,31 @@ int parse(char *argsLine, char command[], char *parameters[]) {
                 perror("Cannot have more than one input redirections");
             } else {
                 //Saves the word after the '<' symbol into the inputFileName character array
-                inputFileName = arrayOfArgsLine[++loopIteration];
+                //inputFileName = arrayOfArgsLine[++loopIteration];
             }
             break;
         }
         
         
+        
+        
+        
+        
         //This block handles the case of "echo" and "ls" commands
         if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
             (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
-            strcpy(command, arrayOfArgsLine[loopIteration]);
-            parameters[indexArrayOfArgsLine] = strdup(argsLine);
-            return BUILTINS;
+            //strcpy(command, arrayOfArgsLine[loopIteration]);
+            //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
+            break;
         }
+        
+        
+        
+        
+        
+        
+        
+        
         
         //This block handles the 'cd' commands and uses chdir() to change the directory
         if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
@@ -159,6 +181,13 @@ int parse(char *argsLine, char command[], char *parameters[]) {
             return BUILTINS;
         }
         
+        
+        
+        
+        
+        
+        
+        
         //This block handles the 'pwd' command and prints the current working directory
         //pwd only works if it is the first command
         static int pwd_Print = NOT_SET;
@@ -167,50 +196,18 @@ int parse(char *argsLine, char command[], char *parameters[]) {
        
                 //char cwd[MAX_WORD_LENGTH] = {EMPTY};
                 //getcwd(cwd, MAX_WORD_LENGTH);
-                strcpy(command, arrayOfArgsLine[FIRST_CMD]);
+                //strcpy(command, arrayOfArgsLine[FIRST_CMD]);
             }
             pwd_Print = SET;
         }
     }
     
-    int terminatingChar = indexArrayOfArgsLine + 1;
-    parameters[terminatingChar] = NULL; //Sets parameter to NULL because EOF or newline is inputting itself as '\0'
-    return COMMAND;
+
+    parameters[indexArrayOfArgsLine + 1] = NULL; //Sets parameter to NULL because EOF or newline is inputting itself as '\0'
+    return EXECUTABLE;
 }
 
-void builtInFunctions() {
-    
-}
-
-/*
-void parse2(int callBack) {
-    char line[MAX_ARGS] = {'\0'};
-    char *words[MAX_ARGS] = {NULL};
-    int getwordResult;
-    int index = 0;
-    int wordCount = 0;
-    
-    for (;;) {
-        getwordResult = getword(line);
-        
-        if (getwordResult > 0 ) {
-            words[index] = strdup(line);
-            wordCount++;
-        }
-        
-        if (getwordResult == 0) {
-            callBack = 0;
-            break;
-        }
-
-        if ((getwordResult == -1) && (wordCount == 0)) {
-            callBack = -1;
-            break;
-        }
-    }
-}
  
- */
     
 
 /************************************************************************************************************/
@@ -220,8 +217,8 @@ void parse2(int callBack) {
 
 int main(int argc, char *argv[])
 {
-    char *argsLine = malloc(MAX_CMD_LENGTH * sizeof(char));
-    char *command = malloc(MAX_CMD_LENGTH * sizeof(char));
+    char argsLine[MAX_ARGS];
+    //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
     char *parameters[MAX_ARGS] = {NULL};
     
@@ -241,7 +238,7 @@ int main(int argc, char *argv[])
         //argsLine will store the characters that were passed in by the getword() function
         //command will store the words of user commands such as "cd" and "ls"
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(argsLine, command, parameters);
+        int parseResult = parse(argsLine, parameters);
         
         if (parseResult == TERMINATED) {
             break;
@@ -251,7 +248,7 @@ int main(int argc, char *argv[])
             continue;
         }
         
-        if (parseResult == COMMAND) {
+        if (parseResult == EXECUTABLE) {
             pid_t pid = fork();
             
             printf("PID PID: %d\n", pid);
@@ -261,7 +258,8 @@ int main(int argc, char *argv[])
             }
             if (pid == CHILD) {
                 printf("Child PID: %d\n", pid);
-                execvp (command, parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
+                execvp (parameters[0], parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
+
                 //execvp("echo", name);
                 //execvp (command, parameters);
                 //fflush(stdout);
@@ -276,6 +274,9 @@ int main(int argc, char *argv[])
             wait(NULL);
             printf("Parent PID: %d\n", pid);
             fflush(stdin);
+
+            
+
 
             //exit(0);
         }
