@@ -152,7 +152,7 @@ int parse(char *argsLine, char *parameters[]) {
             
             //If cd is the only argument then change directory to home
             int directoryIndex = loopIteration + 1;
-            if (arrayOfArgsLine[directoryIndex++] == NULL) {
+            if (arrayOfArgsLine[directoryIndex] == NULL) {
                 char *homeDir = getenv("HOME");
                 chPath = homeDir;
                 
@@ -163,7 +163,22 @@ int parse(char *argsLine, char *parameters[]) {
                 //parameters[terminatingChar] = NULL;
                 //return 0;
             } else {
-                chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
+                //if (arrayOfArgsLine[directoryIndex + 1] == "..")
+
+                if (strcmp(arrayOfArgsLine[directoryIndex], "..") == MATCH) {
+                    char parentDir[MAX_WORD_LENGTH] = {EMPTY};
+                    getcwd(parentDir, MAX_WORD_LENGTH);
+                    char *lastBackslash = strrchr(parentDir, '/');
+                    if (lastBackslash) {
+                        *lastBackslash = '\0';
+                    }
+                    chPath = strdup(parentDir);
+                    
+                } else {
+                    chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
+                }
+                
+
                 //TODO: CHECK IF A FUNCTION NEEDS TO BE CALLED TO GET THE PROPER PATH OR IS JUST RELYING ON THE NAME WITH /folder/ OKAY
                 if ((chdir(chPath) != 0)) {             //If the path to change directory cannot be found then print an error
                     perror("chdir() failed");
