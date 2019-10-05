@@ -53,9 +53,9 @@ char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLO
 /************************************************************************************************************/
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-void parse(char *argsLine, char command[], char *parameters[], int argc) {
+int parse(char *argsLine, char command[], char *parameters[], int argc) {
 
-    char *arrayOfArgsLine[MAX_ARGS] = {NULL};  //TODO: CHECK IF A 2D ARRAY HERE IS REALY NECESSARY
+    char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
     
@@ -63,22 +63,33 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
     //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
     
     int getwordFnResult;    //fn means function
-    
+    int wordCount = 0;
+    int breakout = 0;
     //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
     //The words are then stored in the arrayOfArgsLine two dimensional array
     for (;;) {
         
-        //TODO: FIGURE OUT IF arrayOfArgsLine SHOULD STILL SAVE SPACE CHARACTERS
         getwordFnResult = getword(argsLine);
-        //Copies words into arrayOfArgsLine which is an array of all our arguments
-        arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
-        //Each element of this array is a word of the command line input. This provides a reference to main()
-        parameters[indexArrayOfArgsLine] = strdup(argsLine);
-        indexArrayOfArgsLine++;
         
-        //Once EOF has been reached, then stop copying words into arrays and exit loop.
-        if (getwordFnResult == TERMINATED)
+        if (getwordFnResult > 0) {
+            //Copies words into arrayOfArgsLine which is an array of all our arguments
+            arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
+            parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
+            indexArrayOfArgsLine++;
+            wordCount++;
+        }
+            
+        if (getwordFnResult == 0) {
             break;
+        }
+        if ((getwordFnResult == -1) && (wordCount == 0)) {
+            breakout = -1;
+            break;
+        }
+    }
+    
+    if (breakout == -1) {
+        return -1;
     }
     
     //This for loop iterates through arrayOfArgsLine and searches for metacharacters
@@ -151,8 +162,39 @@ void parse(char *argsLine, char command[], char *parameters[], int argc) {
             pwd_Print = SET;
         }
     }
+    
+    return 1;
 }
 
+/*
+void parse2(int callBack) {
+    char line[MAX_ARGS] = {'\0'};
+    char *words[MAX_ARGS] = {NULL};
+    int getwordResult;
+    int index = 0;
+    int wordCount = 0;
+    
+    for (;;) {
+        getwordResult = getword(line);
+        
+        if (getwordResult > 0 ) {
+            words[index] = strdup(line);
+            wordCount++;
+        }
+        
+        if (getwordResult == 0) {
+            callBack = 0;
+            break;
+        }
+
+        if ((getwordResult == -1) && (wordCount == 0)) {
+            callBack = -1;
+            break;
+        }
+    }
+}
+ 
+ */
     
 
 /************************************************************************************************************/
@@ -172,15 +214,19 @@ int main(int argc, char *argv[])
         //fflush(NULL);
         
         //printf("Argc: %d\n", argc);
+        //int callback = 0;
+        //int parse2Result;
+        //parse2(callback);
+
+        //printf("%d", parse2Result);
         
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //command will store the words of user commands such as "cd" and "ls"
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        parse(argsLine, command, parameters, argc);
-        
-        
-        
+        if (parse(argsLine, command, parameters, argc) == -1) {
+            break;
+        }
         //execvp (command, parameters);
         //char *name[5];
         
@@ -206,7 +252,7 @@ int main(int argc, char *argv[])
             //execvp("echo", name);
             //execvp (command, parameters);
             //fflush(stdout);
-            
+
             perror("EXECVP FAILED");
             
             //exit(9);
@@ -216,7 +262,7 @@ int main(int argc, char *argv[])
         //THIS IS NOW THE PARENT PROCESS
         wait(NULL);
         printf("Parent PID: %d\n", pid);
-        exit(0);
+        //exit(0);
         
         
         
