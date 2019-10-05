@@ -49,45 +49,43 @@ int ampersandFlag = NOT_SET;
 char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
 char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
 
-/************************************************************************************************************/
-/**********************************THIS IS THE PARSE FUNCTION************************************/
-/************************************************************************************************************/
+//**********************************************************************************************************//
+//**********************************THIS IS THE PARSE FUNCTION**********************************************//
+//**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
 int parse(char *argsLine, char *parameters[]) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
-    //memset(*arrayOfArgsLine, EMPTY, (MAX_ARGS * MAX_WORD_LENGTH));  //Clears the array of garbage values
     int indexArrayOfArgsLine = START_OF_ARRAY;
-    
-    //char *inputFileName = malloc(MAX_WORD_LENGTH);
-    //char *inputFileCmd = malloc(MAX_WORD_LENGTH * sizeof(char)); //This performs the same command as the one above. These two could be combined into one name
-    
     int getwordFnResult;    //fn means function
     int wordCount = EMPTY;
     int breakoutParseFn = EMPTY;
     
-    
-    
-    
-    //This for loop reads saves the word stored in the argsLine pointer after the getword function is ran.
-    //The words are then stored in the arrayOfArgsLine two dimensional array
+    //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
+    //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
+    //This for loop saves each word passed to the argsLine pointer as elements in arrayOfArgsLine
+    //The result of getword() evaluates if the user inputted a word, newline, or if it is an EOF
     for (;;) {
         
         getwordFnResult = getword(argsLine);
         
+        //If the user inputted words, store into arrayOfArgsLine
         if (getwordFnResult > EMPTY) {
-            //Copies words into arrayOfArgsLine which is an array of all our arguments
             arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
             parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
             indexArrayOfArgsLine++;
             wordCount++;
         }
-            
-        if (getwordFnResult == EMPTY) {
-            //*parameters[++indexArrayOfArgsLine] = NULL;
+        
+        //If the user pressed 'enter' after inputting words, then break and start evaluating words
+        if ((getwordFnResult == EMPTY) && (wordCount > EMPTY)) {
             break;
+        } else if ((getwordFnResult == EMPTY) && (wordCount == EMPTY)) {
+            return EMPTY;   //Return 0 if the user simply inputted a newline
         }
+        
+        //If the user inputted an EOF and the line is empty then end the program.
         if ((getwordFnResult == TERMINATED) && (wordCount == EMPTY)) {
             breakoutParseFn = TERMINATED;
             break;
@@ -97,54 +95,15 @@ int parse(char *argsLine, char *parameters[]) {
     if (breakoutParseFn == TERMINATED) {
         return TERMINATED;
     }
+    //******************************************************************************************************//
     
-    
-    
-    
-    
-    
-    
-    //This for loop iterates through arrayOfArgsLine and searches for metacharacters
+    //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
+    //This for loop iterates through arrayOfArgsLine and sets global flags
+    //Builtins will return 0 and Executables will return 1
     int loopIteration;
-    
     for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
-        //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
-        //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
-        if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
-            //If the inputRedirectionFlag has already been set from a prior call then print an error
-            printf("%s", arrayOfArgsLine[loopIteration]);
-            if (inputRedirectionFlag == SET) {
-                //errno = EINVAL;     //This errorno displays an invalid argument error for perror
-                perror("Cannot have more than one input redirections");
-            } else {
-                //Saves the word after the '<' symbol into the inputFileName character array
-                //inputFileName = arrayOfArgsLine[++loopIteration];
-            }
-            break;
-        }
-        
-        
-        
-        
-        
-        
-        //This block handles the case of "echo" and "ls" commands
-        if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
-            (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
-            //strcpy(command, arrayOfArgsLine[loopIteration]);
-            //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
-            break;
-        }
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        //*******************************THIS SECTION HANDLES BUILTINS**************************************//
         //This block handles the 'cd' commands and uses chdir() to change the directory
         if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
             //Saves the directory path to change into
@@ -155,16 +114,9 @@ int parse(char *argsLine, char *parameters[]) {
             if (arrayOfArgsLine[directoryIndex] == NULL) {
                 char *homeDir = getenv("HOME");
                 chPath = homeDir;
-                
-                //chdir(homeDir);
-                //printf("%s\n", homeDir);
-                //printf("SUCCESS: Changed to home directory\n");
-                //int terminatingChar = indexArrayOfArgsLine + 1;
-                //parameters[terminatingChar] = NULL;
-                //return 0;
             } else {
-                //if (arrayOfArgsLine[directoryIndex + 1] == "..")
 
+                //If "cd .." then get the parent directory by removing each directory from chPath
                 if (strcmp(arrayOfArgsLine[directoryIndex], "..") == MATCH) {
                     char parentDir[MAX_WORD_LENGTH] = {EMPTY};
                     getcwd(parentDir, MAX_WORD_LENGTH);
@@ -174,60 +126,77 @@ int parse(char *argsLine, char *parameters[]) {
                     }
                     chPath = strdup(parentDir);
                     
+                //All other paths will obtain whatever th e user inputted after cd
                 } else {
                     chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
                 }
                 
-
-                //TODO: CHECK IF A FUNCTION NEEDS TO BE CALLED TO GET THE PROPER PATH OR IS JUST RELYING ON THE NAME WITH /folder/ OKAY
-                if ((chdir(chPath) != 0)) {             //If the path to change directory cannot be found then print an error
+                if ((chdir(chPath) != 0)) {
                     perror("chdir() failed");
                     return BUILTINS;
                 }
             }
             
-            //strcpy(chPath, arrayOfArgsLine[++loopIteration]);
-        
+            //Executes and changes path to chPath
             chdir(chPath);
-            printf("SUCCESS: Changed to %s directory\n", chPath);
             
-            int terminatingChar = indexArrayOfArgsLine + 1;
-            parameters[terminatingChar] = NULL;
+            //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
+            parameters[indexArrayOfArgsLine + 1] = NULL;
             return BUILTINS;
         }
         
         
-        
-        
-        
-        
-        
-        
-        //This block handles the 'pwd' command and prints the current working directory
-        //pwd only works if it is the first command
-        static int pwd_Print = NOT_SET;
-        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
-            if (pwd_Print == NOT_SET) {
-       
-                //char cwd[MAX_WORD_LENGTH] = {EMPTY};
-                //getcwd(cwd, MAX_WORD_LENGTH);
-                //strcpy(command, arrayOfArgsLine[FIRST_CMD]);
+        //*****************************THIS SECTION HANDLES IO REDIRECTION**********************************//
+        //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
+        //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
+        if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
+            //If the inputRedirectionFlag has already been set from a prior call then print an error
+            printf("%s", arrayOfArgsLine[loopIteration]);
+            if (inputRedirectionFlag == SET) {
+                perror("Cannot have more than one input redirections");
+            } else {
+                //Saves the word after the '<' symbol into the inputFileName character array
+                //inputFileName = arrayOfArgsLine[++loopIteration];
             }
-            pwd_Print = SET;
+            break;
         }
-    }
+        
     
-
-    parameters[indexArrayOfArgsLine + 1] = NULL; //Sets parameter to NULL because EOF or newline is inputting itself as '\0'
+        //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
+        //This block handles the case of "echo" and "ls" commands
+        if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
+            (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
+            //strcpy(command, arrayOfArgsLine[loopIteration]);
+            //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
+            break;
+        }
+        
+            //This block handles the 'pwd' command and prints the current working directory
+            //pwd only works if it is the first command
+            static int pwd_Print = NOT_SET;
+            if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
+                if (pwd_Print == NOT_SET) {
+           
+                    //char cwd[MAX_WORD_LENGTH] = {EMPTY};
+                    //getcwd(cwd, MAX_WORD_LENGTH);
+                    //strcpy(command, arrayOfArgsLine[FIRST_CMD]);
+                }
+                pwd_Print = SET;
+            }
+        }
+    
+    
+    //This function defaults to a return value of 1.
+    //If the command is not a builtin or EOF then it runs as an executable
+    //Sets parameter of the index after the last word to NULL to ensure proper inputs to execvp
+    parameters[indexArrayOfArgsLine + 1] = NULL;
     return EXECUTABLE;
 }
 
- 
-    
 
-/************************************************************************************************************/
-/**********************************THIS IS THE MAIN FUNCTION**************************************/
-/************************************************************************************************************/
+//**********************************************************************************************************//
+//**********************************THIS IS THE MAIN FUNCTION***********************************************//
+//**********************************************************************************************************//
 //See description of p2 above for description of how the main function works
 
 int main(int argc, char *argv[])
