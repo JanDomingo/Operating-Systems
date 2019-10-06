@@ -59,7 +59,7 @@ int bangbangFlag = NOT_SET;
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName) {
+int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName, char *previousCommandCall[]) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
@@ -174,8 +174,12 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             return BUILTINS;
         }
         
+        //This loop handles the '!!' bang bang command and sets the parameters to execute as the previous
+        //command
         if ((strcmp(arrayOfArgsLine[loopIteration], "!!")) == MATCH) {
-            bangbangFlag = SET;
+            memcpy(parameters, previousCommandCall, MAX_ARGS);
+            memcpy(previousCommandCall, parameters, MAX_ARGS);
+            return EXECUTABLE;
         }
         
         
@@ -250,7 +254,8 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
     }
     
     //This function defaults to a return value of 1.
-        //If the command is not a builtin or EOF then it runs as an executable
+    //If the command is not a builtin or EOF then it runs as an executable
+    memcpy(previousCommandCall, parameters, MAX_ARGS);
     return EXECUTABLE;
 }
 
@@ -288,14 +293,11 @@ int main(int argc, char *argv[])
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(argsLine, parameters, inputFileName, outputFileName);
+        int parseResult = parse(argsLine, parameters, inputFileName, outputFileName, previousCommandCall);
         
         //If !! is not called, then save the current parameters into previousCommandCall
         //If !! is called then previousCommandCall will be passed into execvp
-        if (bangbangFlag != SET) {
-            memcpy(previousCommandCall, parameters, MAX_ARGS);
-        }
-        
+
         if (parseResult == TERMINATED) {
             break;
         }
@@ -345,12 +347,6 @@ int main(int argc, char *argv[])
                     }
                     close (outputfd);
                 }
-                
-                if (bangbangFlag == SET) {
-                    memcpy(parameters, previousCommandCall, MAX_ARGS);
-                    printf("%s", *parameters);
-                }
-                
                 
                 //printf("Child PID: %d\n", pid);
                 execvp (parameters[FIRST_CMD], parameters);
