@@ -45,10 +45,10 @@
 //TODO: PUT COMMENTS NEXT TO EACH DEFINE STATEMENT AND EXPLAIN WHAT THEY DOw
 
 //Global Variables
+int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAndAmpersandFlag = NOT_SET;
-int ampersandFlag = NOT_SET;
 
 char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
 char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
@@ -64,7 +64,7 @@ int parse(char *argsLine, char *parameters[]) {
     int indexArrayOfArgsLine = START_OF_ARRAY;
     int getwordFnResult;    //fn means function
     int wordCount = EMPTY;
-    int breakoutParseFn = EMPTY;
+    int breakoutParseFn = NOT_SET;
     
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
@@ -128,6 +128,7 @@ int parse(char *argsLine, char *parameters[]) {
     //This for loop iterates through arrayOfArgsLine and sets global flags
     //Builtins will return 0 and Executables will return 1
     int loopIteration;
+    //TODO: IS A WHILE(1) LOOP MORE SUITABLE FOR THIS SCENARIO?
     for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
         //*******************************THIS SECTION HANDLES BUILTINS**************************************//
@@ -171,11 +172,12 @@ int parse(char *argsLine, char *parameters[]) {
             parameters[indexArrayOfArgsLine + 1] = NULL;
             return BUILTINS;
         }
-        
+
         
         //*****************************THIS SECTION HANDLES IO REDIRECTION**********************************//
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
+        //TODO: WORK IN PROGRESS
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             printf("%s", arrayOfArgsLine[loopIteration]);
@@ -200,6 +202,7 @@ int parse(char *argsLine, char *parameters[]) {
         }
         
         //This block handles the "pwd" command
+        //TODO: CHECK IF THE PWD_PRINT STATIC INT IS NECESSARY
         static int pwd_Print = NOT_SET;
         if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
             if (pwd_Print == NOT_SET) {
@@ -209,10 +212,28 @@ int parse(char *argsLine, char *parameters[]) {
     }
     
     
-    //This function defaults to a return value of 1.
-    //If the command is not a builtin or EOF then it runs as an executable
-    //Sets parameter of the index after the last word to NULL to ensure proper inputs to execvp
+    //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
     parameters[indexArrayOfArgsLine + 1] = NULL;
+    
+    
+    //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
+    //This block analyzes if the last character inputted is an ampersand '&'
+    int lastIndex = indexArrayOfArgsLine - 1;
+    if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
+        
+        if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
+            if (indexArrayOfArgsLine > 1) {
+                ampersandIsLastFlag = SET;
+                parameters[lastIndex] = NULL;   //Removes the & from input parmeters
+            }
+            else if (indexArrayOfArgsLine == 1) {
+                return 0;   //Reissues prompt if & is just issued by itself
+            }
+        }
+    }
+    
+    //This function defaults to a return value of 1.
+        //If the command is not a builtin or EOF then it runs as an executable
     return EXECUTABLE;
 }
 
@@ -225,6 +246,7 @@ int parse(char *argsLine, char *parameters[]) {
 int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
+
     //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
 
@@ -255,17 +277,17 @@ int main(int argc, char *argv[])
         if (parseResult == BUILTINS) {
             continue;
         }
-        
+                
         if (parseResult == EXECUTABLE) {
             pid_t pid = fork();
             
-            printf("PID PID: %d\n", pid);
+            //printf("PID PID: %d\n", pid);
             if (pid == FORK_FAILED) {
                 perror("Fork Failed");
                 exit(1);
             }
             if (pid == CHILD) {
-                printf("Child PID: %d\n", pid);
+                //printf("Child PID: %d\n", pid);
                 execvp (parameters[FIRST_CMD], parameters);
 
                 //execvp("echo", name);
@@ -279,8 +301,16 @@ int main(int argc, char *argv[])
             }
             
             //THIS IS NOW THE PARENT PROCESS
+            
+            //If an ampersand is placed after a command (.e.g. echo hello &),
+            //then print the parent PID and the command argument. In this example: (echo [pid])
+            if (ampersandIsLastFlag == SET) {
+                printf("%s [%d]\n", parameters[FIRST_CMD], pid);
+            }
+            
+
             wait(NULL);
-            printf("Parent PID: %d\n", pid);
+            //printf("Parent PID: %d\n", pid);
             fflush(stdin);
 
             
