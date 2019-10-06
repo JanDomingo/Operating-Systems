@@ -1,0 +1,4 @@
+echo Do you wait for non-backgrounded jobs? &
+/usr/bin/date
+/home/cs/faculty/cs570/jabbersleepy
+/usr/bin/date

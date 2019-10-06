@@ -1,0 +1,4 @@
+cd /home/cs/faculty/cs570
+cd Two
+!!
+pwd

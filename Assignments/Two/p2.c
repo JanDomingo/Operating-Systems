@@ -13,12 +13,14 @@
 //  This program is a command line interpreter for the UNIX system
 //  TODO: CONTINUE FILLING OUT DESCRIPTION COMMENT OF THE PROGRAM
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/errno.h>
+#include <stdio.h>          //fflush()
+#include <stdlib.h>         //getenv(), exit()
+#include <string.h>         //perror()
+#include <signal.h>         //sigaction(), signal(), killpg()
+#include <unistd.h>         //dup2(), execvp(), chdir(), fork(), access(), setpgid(), getpgrp()
+#include <fcntl.h>          //open()
+#include <sys/wait.h>       //wait()
+#include <sys/stat.h>       //stat()
 #include "getword.h"
 
 #define MAX_ARGS 100
@@ -39,6 +41,8 @@
 #define LINES_TO_CREATE 1
 #define BUILTINS 0
 #define EXECUTABLE 1
+
+//TODO: PUT COMMENTS NEXT TO EACH DEFINE STATEMENT AND EXPLAIN WHAT THEY DOw
 
 //Global Variables
 int inputRedirectionFlag = NOT_SET;
@@ -85,11 +89,31 @@ int parse(char *argsLine, char *parameters[]) {
             return EMPTY;   //Return 0 if the user simply inputted a newline
         }
         
-        //If the user inputted an EOF and the line is empty then end the program.
-        if ((getwordFnResult == TERMINATED) && (wordCount == EMPTY)) {
-            breakoutParseFn = TERMINATED;
-            break;
+        //Checks to see if the the word is "done"
+        if (getwordFnResult == TERMINATED){
+            
+            if (strcmp(argsLine, "done") == MATCH) {
+                //If done is the first word the user entered then terminate
+                if (wordCount == EMPTY) {
+                    return TERMINATED;
+                } else {
+                    arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
+                    parameters[indexArrayOfArgsLine] = strdup(argsLine);
+                    indexArrayOfArgsLine++;
+                    wordCount++;
+                    getwordFnResult = 4;
+                }
+            }
+            else if (wordCount == EMPTY) {
+                breakoutParseFn = TERMINATED;
+                break;
+            }
         }
+        //If the user inputted an EOF and the line is empty then end the program.
+        //if ((getwordFnResult == TERMINATED) && (wordCount == EMPTY)) {
+        //    breakoutParseFn = TERMINATED;
+        //    break;
+        //}
     }
     //If the path to change directory cannot be found then print an error
     if (breakoutParseFn == TERMINATED) {
@@ -163,6 +187,7 @@ int parse(char *argsLine, char *parameters[]) {
         
     
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
+        //TODO: FIGURE OUT IF THIS SECTION IS NECESSARY SINCE EXECUTABLES ARE ALREADY IN THE PARAMETERS ARRAY
         //This block handles the case of "echo" and "ls" commands
         if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
             (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
@@ -171,19 +196,14 @@ int parse(char *argsLine, char *parameters[]) {
             break;
         }
         
-            //This block handles the 'pwd' command and prints the current working directory
-            //pwd only works if it is the first command
-            static int pwd_Print = NOT_SET;
-            if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
-                if (pwd_Print == NOT_SET) {
-           
-                    //char cwd[MAX_WORD_LENGTH] = {EMPTY};
-                    //getcwd(cwd, MAX_WORD_LENGTH);
-                    //strcpy(command, arrayOfArgsLine[FIRST_CMD]);
-                }
-                pwd_Print = SET;
+        //This block handles the "pwd" command
+        static int pwd_Print = NOT_SET;
+        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
+            if (pwd_Print == NOT_SET) {
             }
+            pwd_Print = SET;
         }
+    }
     
     
     //This function defaults to a return value of 1.
@@ -222,7 +242,6 @@ int main(int argc, char *argv[])
         
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
-        //command will store the words of user commands such as "cd" and "ls"
         //parameters is an array of pointers to char with each element being a word from the cmd line input
         int parseResult = parse(argsLine, parameters);
         
@@ -244,7 +263,7 @@ int main(int argc, char *argv[])
             }
             if (pid == CHILD) {
                 printf("Child PID: %d\n", pid);
-                execvp (parameters[0], parameters);    //TODO: FIX THIS SO THAT IT WORKS WITH OTHER COMMANDS BESIDES echo
+                execvp (parameters[FIRST_CMD], parameters);
 
                 //execvp("echo", name);
                 //execvp (command, parameters);

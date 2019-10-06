@@ -201,6 +201,7 @@ int getword(char *w)
         if (iochar == NEWLINE) {
             //If there is a newline after "done"
             if (strcmp(startOfWordPtr, "done") == EMPTY) {
+                ungetc(iochar, stdin);    //Return current word and keep the newline character for the next
                 return FINISH;
             }
             
