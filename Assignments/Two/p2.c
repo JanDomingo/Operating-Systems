@@ -48,17 +48,17 @@
 int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
-int outputRedirectionAndAmpersandFlag = NOT_SET;
+//int outputRedirectionAndAmpersandFlag = NOT_SET;
 
-char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
-char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
+//char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
+//char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char *parameters[]) {
+int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
@@ -172,22 +172,34 @@ int parse(char *argsLine, char *parameters[]) {
             parameters[indexArrayOfArgsLine + 1] = NULL;
             return BUILTINS;
         }
-
         
-        //*****************************THIS SECTION HANDLES IO REDIRECTION**********************************//
+        
+        //***************************THIS SECTION SETS IO REDIRECTION FLAGS*********************************//
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
         //TODO: WORK IN PROGRESS
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
-            printf("%s", arrayOfArgsLine[loopIteration]);
+            //printf("%s", arrayOfArgsLine[loopIteration]);
             if (inputRedirectionFlag == SET) {
                 perror("Cannot have more than one input redirections");
-            } else {
+            } else if (inputRedirectionFlag == NOT_SET) {
+                inputRedirectionFlag = SET;
                 //Saves the word after the '<' symbol into the inputFileName character array
-                //inputFileName = arrayOfArgsLine[++loopIteration];
+                inputFileName = strdup(arrayOfArgsLine[loopIteration + 1]);
             }
-            break;
+        }
+        
+        if ((strcmp(arrayOfArgsLine[loopIteration], ">")) == MATCH) {
+            //If the inputRedirectionFlag has already been set from a prior call then print an error
+            //printf("%s", arrayOfArgsLine[loopIteration]);
+            if (outputRedirectionFlag == SET) {
+                perror("Cannot have more than one input redirections");
+            } else if (outputRedirectionFlag == NOT_SET) {
+                outputRedirectionFlag = SET;
+                //Saves the word after the '<' symbol into the inputFileName character array
+                outputFileName = strdup(arrayOfArgsLine[loopIteration + 1]);
+            }
         }
         
     
@@ -246,6 +258,8 @@ int parse(char *argsLine, char *parameters[]) {
 int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
+    char *inputFileName = NULL;
+    char *outputFileName = NULL;
 
     //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
@@ -255,7 +269,7 @@ int main(int argc, char *argv[])
         char *parameters[MAX_ARGS] = {NULL};
         //parameters[MAX_ARGS] = NULL;
         printf("%%1%% \n");
-        fflush(stdin);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
+        fflush(0);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
         //fflush(NULL);
         
         //printf("Argc: %d\n", argc);
@@ -268,7 +282,7 @@ int main(int argc, char *argv[])
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(argsLine, parameters);
+        int parseResult = parse(argsLine, parameters, inputFileName, outputFileName);
         
         if (parseResult == TERMINATED) {
             break;
@@ -287,6 +301,39 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             if (pid == CHILD) {
+                
+                if (inputRedirectionFlag == SET) {
+                    //Returns the file descriptor value of the inputFileName value
+                    int inputfd = open(inputFileName, O_CREAT | O_APPEND | O_WRONLY);  //infd is short for input file descriptor
+                    if (inputfd < 0) {
+                        perror("Error opening");
+                        exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+                    }
+                    
+                    int inputDup = dup2(inputfd, 0);   //Changes the stdin to the inputFileName file
+                    if (inputDup < 0) {
+                        perror("input dup2");
+                        exit(1);
+                    }
+                    close (inputfd);
+                }
+                
+                if (outputRedirectionFlag == SET) {
+                    //Returns the file descriptor value of the inputFileName value
+                    int outputfd = open(inputFileName, O_CREAT | O_APPEND | O_WRONLY);  //outfd is short for outfd file descriptor
+                    if (outputfd < 0) {
+                        perror("Error opening");
+                        exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+                    }
+                    
+                    int outputDup = dup2(outputfd, 1);   //Changes the stdout to the output filename
+                    if (outputDup < 0) {
+                        perror("output dup2");
+                        exit(1);
+                    }
+                    close (outputfd);
+                }
+                
                 //printf("Child PID: %d\n", pid);
                 execvp (parameters[FIRST_CMD], parameters);
 
