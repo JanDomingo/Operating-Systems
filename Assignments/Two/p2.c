@@ -48,6 +48,7 @@
 int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
+int bangbangFlag = NOT_SET;
 //int outputRedirectionAndAmpersandFlag = NOT_SET;
 
 //char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
@@ -173,6 +174,10 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             return BUILTINS;
         }
         
+        if ((strcmp(arrayOfArgsLine[loopIteration], "!!")) == MATCH) {
+            bangbangFlag = SET;
+        }
+        
         
         //***************************THIS SECTION SETS IO REDIRECTION FLAGS*********************************//
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
@@ -258,9 +263,10 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
 int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
+    char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
     char *inputFileName = NULL;
     char *outputFileName = NULL;
-
+    
     //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
 
@@ -284,6 +290,12 @@ int main(int argc, char *argv[])
         //parameters is an array of pointers to char with each element being a word from the cmd line input
         int parseResult = parse(argsLine, parameters, inputFileName, outputFileName);
         
+        //If !! is not called, then save the current parameters into previousCommandCall
+        //If !! is called then previousCommandCall will be passed into execvp
+        if (bangbangFlag != SET) {
+            memcpy(previousCommandCall, parameters, MAX_ARGS);
+        }
+        
         if (parseResult == TERMINATED) {
             break;
         }
@@ -301,7 +313,7 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             if (pid == CHILD) {
-                
+                                
                 if (inputRedirectionFlag == SET) {
                     //Returns the file descriptor value of the inputFileName value
                     int inputfd = open(inputFileName, O_CREAT | O_APPEND | O_WRONLY);  //infd is short for input file descriptor
@@ -333,6 +345,12 @@ int main(int argc, char *argv[])
                     }
                     close (outputfd);
                 }
+                
+                if (bangbangFlag == SET) {
+                    memcpy(parameters, previousCommandCall, MAX_ARGS);
+                    printf("%s", *parameters);
+                }
+                
                 
                 //printf("Child PID: %d\n", pid);
                 execvp (parameters[FIRST_CMD], parameters);
