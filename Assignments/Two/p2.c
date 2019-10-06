@@ -59,7 +59,7 @@ int bangbangFlag = NOT_SET;
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName, char *previousCommandCall[]) {
+int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName[], char *previousCommandCall[]) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
@@ -203,11 +203,12 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputRedirectionFlag == SET) {
-                perror("Cannot have more than one input redirections");
+                perror("Cannot have more than one input redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
             } else if (outputRedirectionFlag == NOT_SET) {
                 outputRedirectionFlag = SET;
-                //Saves the word after the '<' symbol into the inputFileName character array
-                outputFileName = strdup(arrayOfArgsLine[loopIteration + 1]);
+                //Removes metachar and everything afterwards so that it doesn't get passed into echo
+                parameters[loopIteration] = NULL;
+                outputFileName[0] = strdup(arrayOfArgsLine[loopIteration + 1]);
             }
         }
         
@@ -219,7 +220,7 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
             //strcpy(command, arrayOfArgsLine[loopIteration]);
             //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
-            break;
+            //break;
         }
         
         //This block handles the "pwd" command
@@ -269,8 +270,7 @@ int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-    char *inputFileName = NULL;
-    char *outputFileName = NULL;
+
     
     //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
@@ -278,6 +278,8 @@ int main(int argc, char *argv[])
     
     for(;;) {
         char *parameters[MAX_ARGS] = {NULL};
+        char *inputFileName = NULL;
+        char *outputFileName[1] = {NULL};
         //parameters[MAX_ARGS] = NULL;
         printf("%%1%% \n");
         fflush(0);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
@@ -305,7 +307,7 @@ int main(int argc, char *argv[])
         if (parseResult == BUILTINS) {
             continue;
         }
-                
+        
         if (parseResult == EXECUTABLE) {
             pid_t pid = fork();
             
@@ -334,15 +336,17 @@ int main(int argc, char *argv[])
                 
                 if (outputRedirectionFlag == SET) {
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(inputFileName, O_CREAT | O_APPEND | O_WRONLY);  //outfd is short for outfd file descriptor
+                    int outputfd = open(outputFileName[0], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
+                    
                     if (outputfd < 0) {
-                        perror("Error opening");
+                        perror("Outputfd error:");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int outputDup = dup2(outputfd, 1);   //Changes the stdout to the output filename
+                    int outputDup;
+                    outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
                     if (outputDup < 0) {
-                        perror("output dup2");
+                        perror("OutputDup2 error:");
                         exit(1);
                     }
                     close (outputfd);
