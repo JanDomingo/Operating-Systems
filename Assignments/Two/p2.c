@@ -112,6 +112,10 @@ int parse(char *argsLine, char *parameters[]) {
                 breakoutParseFn = TERMINATED;
                 break;
             }
+            //If unexpected EOF (e.g. EOF directly after character) then break but still run program
+            else if (wordCount > EMPTY) {
+                break;
+            }
         }
     }
     //If the path to change directory cannot be found then print an error
