@@ -89,14 +89,16 @@ int parse(char *argsLine, char *parameters[]) {
             return EMPTY;   //Return 0 if the user simply inputted a newline
         }
         
-        //Checks to see if the the word is "done"
+        //If getwordFnResult returned either the word "done" or EOF
         if (getwordFnResult == TERMINATED){
             
+            //This block checks if the user inputted the word "done"
             if (strcmp(argsLine, "done") == MATCH) {
                 //If done is the first word the user entered then terminate
                 if (wordCount == EMPTY) {
                     return TERMINATED;
                 } else {
+                    //Else "done" is treated as a normal string and added to the parameters array
                     arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
                     parameters[indexArrayOfArgsLine] = strdup(argsLine);
                     indexArrayOfArgsLine++;
@@ -104,16 +106,13 @@ int parse(char *argsLine, char *parameters[]) {
                     getwordFnResult = 4;
                 }
             }
+            
+            //If word is not done but getwordFnResult is -1 then break
             else if (wordCount == EMPTY) {
                 breakoutParseFn = TERMINATED;
                 break;
             }
         }
-        //If the user inputted an EOF and the line is empty then end the program.
-        //if ((getwordFnResult == TERMINATED) && (wordCount == EMPTY)) {
-        //    breakoutParseFn = TERMINATED;
-        //    break;
-        //}
     }
     //If the path to change directory cannot be found then print an error
     if (breakoutParseFn == TERMINATED) {
