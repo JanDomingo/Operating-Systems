@@ -289,21 +289,24 @@ int main(int argc, char *argv[])
         cmdLineArgs[cmdLineLoop] = strdup(argv[cmdLineLoop]);
     }
     
-    //If a perror was here as an else statement, it would print would the perror every time. TODO: IS THIS ACCEPTABLE?
+    //If the user inputs a "<" to specify a file, this would still run but not print out anything. If
+    //there was a perror as an else statement, then it would print the perror everytime. TODO: IS THIS ACCEPTABLE?
     if (access(argv[1], R_OK) == ACCESS_OK) {
+        
         //Returns the file descriptor value of the inputFileName value
-        int inputfd = open(argv[1], O_RDONLY);  //infd is short for input file descriptor
-        if (inputfd < 0) {
-            perror("Inputfd error: ");
+        int cmdlineInputfd = open(argv[1], O_RDONLY);  //infd is short for input file descriptor
+        if (cmdlineInputfd < 0) {
+            perror("Access cmdline  error: ");
             exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
         }
         
-        int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
-        if (inputDup < 0) {
+        //Sets the stdin to be the file that was specified in the cmdline
+        int cmdlineInputDup = dup2(cmdlineInputfd, fileno(stdin));
+        if (cmdlineInputDup < 0) {
             perror("Input dup2 error:");
             exit(1);
         }
-        close (inputfd);
+        close (cmdlineInputfd);
     }
 
     for(;;) {
@@ -347,15 +350,18 @@ int main(int argc, char *argv[])
                 perror("Fork Failed");
                 exit(1);
             }
+
+            pid = CHILD;    //TODO: USED FOR DEBUGGING, DELETE THIS LINE AFTER DONE WORKING ON PROGRAM
             if (pid == CHILD) {
                                 
                 if (inputRedirectionFlag == SET) {
                     
                     //Cannot find file to read in
+                    /*
                     int fileExists = access(inputFilename[0], R_OK);
                     if (fileExists < 0) {
-                        perror("Access error:");
-                    }
+                        perror("Access input error:");
+                    }*/
                     
                     //Returns the file descriptor value of the inputFileName value
                     int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
@@ -364,7 +370,7 @@ int main(int argc, char *argv[])
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
+                    int inputDup = dup2(fileno(stdin), inputfd);   //Changes the stdin to the inputFileName file
                     if (inputDup < 0) {
                         perror("Input dup2 error:");
                         exit(1);
@@ -374,22 +380,23 @@ int main(int argc, char *argv[])
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                     
+                    //int fileExists = access(outputFilename[0], F_OK);
                     //Cannot overwrite an existing file
-                    int fileExists = access(outputFilename[0], W_OK);
-                    if (fileExists == MATCH) {
-                        perror("Ferror");
-                    }
+
+                    //if (fileExists == MATCH) {
+                    //    perror("Access output error");
+                    //}
                     
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT);
+                    int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT | O_TRUNC | S_IWUSR);
                     
                     if (outputfd < 0) {
                         perror("Outputfd error");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
-                    if (outputDup < 0) {
+                    int outputDup = dup2(fileno(stdout), outputfd);   //Changes the stdout to the output filename
+                    if ((outputDup < 0)) {
                         perror("Output dup2 error");
                         exit(1);
                     }

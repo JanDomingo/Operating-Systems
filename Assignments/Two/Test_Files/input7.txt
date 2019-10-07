@@ -1,2 +1,2 @@
 
-/usr/bin/uname -a > your.output()
+/usr/bin/uname -a > your.outputO
