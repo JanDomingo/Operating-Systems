@@ -56,7 +56,7 @@ int bangbangFlag = NOT_SET;
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outputFilename[], char *previousCommandCall[]) {
+int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outputFilename[], char *previousCommandCall[], char *execCmd[]) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
@@ -64,6 +64,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int wordCount = EMPTY;
     int breakoutParseFn = NOT_SET;
     int loopIteration;
+    int execCmdIndex = EMPTY;
     
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
@@ -192,8 +193,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             } else if (inputRedirectionFlag == NOT_SET) {
                 inputRedirectionFlag = SET;
                 //Saves the word after the '<' symbol into the inputFileName character array
-                inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
+                inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);    //TODO: USING LOOPITERATION++ WILL CAUSE A THREAD ERROR IF A FILE AFTER THE > OR < or >& SIGN DOES NOT EXIST. MAYBE IMPLEMENT ACCESS FUNCTION TO CHECK FIRST BEFORE STRDUP?
             }
+            continue;
         }
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">")) == MATCH) {
@@ -205,8 +207,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 outputRedirectionFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
                 parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
-                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
+                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
             }
+            continue;
         }
         
         //TODO: Could probably combine the loops
@@ -219,8 +222,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 outputRedirectionAmpersandFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
                 parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
-                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
+                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
             }
+            continue;
         }
         
     
@@ -242,11 +246,15 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             pwd_Print = SET;
         }
+        
+        execCmd[execCmdIndex++] = strdup(arrayOfArgsLine[loopIteration]);
+        
     }
     
     
     //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
     parameters[indexArrayOfArgsLine + 1] = NULL;
+    execCmd[execCmdIndex + 1] = NULL;
     
     
     //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
@@ -257,7 +265,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
             if (indexArrayOfArgsLine > 1) {
                 ampersandIsLastFlag = SET;
-                parameters[lastIndex] = NULL;   //Removes the & from input parmeters
+                parameters[lastIndex] = NULL;   //Removes the & from parameters
+                execCmd[execCmdIndex] = NULL;
             }
             else if (indexArrayOfArgsLine == 1) {
                 return 0;   //Reissues prompt if & is just issued by itself
@@ -282,6 +291,7 @@ int main(int argc, char *argv[])
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
     char *cmdLineArgs[MAX_ARGS] = {NULL};
+
     int cmdLineLoop;
     //If the user did not input a "<" to input a file in the command line arguments, then the program will
     //assume that the user is inputting a path or a file to read in argv[1]. (e.g. ./p2 input.txt)
@@ -311,6 +321,7 @@ int main(int argc, char *argv[])
 
     for(;;) {
         char *parameters[MAX_ARGS] = {NULL};    //parameters will hold tokenized user input into an array
+        char *execCmd[MAX_ARGS] = {NULL};
         char *inputFilename[1] = {NULL};
         char *outputFilename[1] = {NULL};
         //parameters[MAX_ARGS] = NULL;
@@ -326,10 +337,14 @@ int main(int argc, char *argv[])
 
         //printf("%d", parse2Result);
         
+        inputRedirectionFlag = NOT_SET;
+        outputRedirectionFlag = NOT_SET;
+        outputRedirectionAmpersandFlag = NOT_SET;
+        
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(argsLine, parameters, inputFilename, outputFilename, previousCommandCall);
+        int parseResult = parse(argsLine, parameters, inputFilename, outputFilename, previousCommandCall, execCmd);
         
         //If !! is not called, then save the current parameters into previousCommandCall
         //If !! is called then previousCommandCall will be passed into execvp
@@ -370,7 +385,7 @@ int main(int argc, char *argv[])
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int inputDup = dup2(fileno(stdin), inputfd);   //Changes the stdin to the inputFileName file
+                    int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
                     if (inputDup < 0) {
                         perror("Input dup2 error:");
                         exit(1);
@@ -379,26 +394,24 @@ int main(int argc, char *argv[])
                 }
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
-                    
-                    //int fileExists = access(outputFilename[0], F_OK);
-                    //Cannot overwrite an existing file
-
-                    //if (fileExists == MATCH) {
-                    //    perror("Access output error");
-                    //}
-                    
+                                       
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT | O_TRUNC | S_IWUSR);
-                    
+                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT, S_IXOTH);
                     if (outputfd < 0) {
                         perror("Outputfd error");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int outputDup = dup2(fileno(stdout), outputfd);   //Changes the stdout to the output filename
-                    if ((outputDup < 0)) {
+                    int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
+                    if (outputDup < 0) {
                         perror("Output dup2 error");
                         exit(1);
+                    }
+                    
+                    //Cannot overwrite an existing file
+                    int fileExists = access(outputFilename[FIRST_CMD], W_OK);
+                    if (fileExists != MATCH) {
+                        perror("Access output error");
                     }
                     
                     if (outputRedirectionAmpersandFlag == SET) {
@@ -413,7 +426,7 @@ int main(int argc, char *argv[])
                 }
                 
                 //printf("Child PID: %d\n", pid);
-                execvp (parameters[FIRST_CMD], parameters);
+                execvp (execCmd[FIRST_CMD], execCmd);
                 //execvp will only return if it failed
                 perror("EXECVP FAILED");
                 exit(9);
