@@ -142,6 +142,23 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     //******************************************************************************************************//
     
     
+    //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
+    //This block analyzes if the last character inputted is an ampersand '&'
+    int lastIndex = indexArrayOfArgsLine - 1;
+    if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
+        
+        if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
+            if (indexArrayOfArgsLine > 1) {
+                ampersandIsLastFlag = SET;
+                parameters[lastIndex] = NULL;   //Removes the & from parameters
+                execCmd[execCmdIndex + 1] = NULL;   //TODO: CHECK IF THIS FIX IS OK
+            }
+            else if (indexArrayOfArgsLine == 1) {
+                return 0;   //Reissues prompt if & is just issued by itself
+            }
+        }
+    }
+    
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
     //This for loop iterates through arrayOfArgsLine and sets global flags
     //Builtins will return 0 and Executables will return 1
@@ -190,6 +207,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 }
                 
                 //Executes and changes path to chPath
+                                
                 chdir(chPath);
                 
                 
@@ -287,34 +305,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             pwd_Print = SET;
         }
-        
         execCmd[execCmdIndex++] = strdup(arrayOfArgsLine[loopIteration]);
-        
     }
     
     
     //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
     parameters[indexArrayOfArgsLine + 1] = NULL;
     execCmd[execCmdIndex + 1] = NULL;
-    
-    
-    //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
-    //This block analyzes if the last character inputted is an ampersand '&'
-    int lastIndex = indexArrayOfArgsLine - 1;
-    if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
-        
-        if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
-            if (indexArrayOfArgsLine > 1) {
-                ampersandIsLastFlag = SET;
-                parameters[lastIndex] = NULL;   //Removes the & from parameters
-                execCmd[execCmdIndex] = NULL;
-            }
-            else if (indexArrayOfArgsLine == 1) {
-                return 0;   //Reissues prompt if & is just issued by itself
-            }
-        }
-    }
-    
     //This function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
     memcpy(previousCommandCall, parameters, MAX_ARGS);
@@ -390,6 +387,9 @@ int main(int argc, char *argv[])
         }
         
         if (parseResult == BUILTINS) {
+            if (ampersandIsLastFlag == SET) {
+                printf("%s [%d]\n", parameters[FIRST_CMD], getpid());
+            }
             continue;
         }
         
