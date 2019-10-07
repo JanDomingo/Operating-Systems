@@ -334,6 +334,12 @@ int main(int argc, char *argv[])
             if (pid == CHILD) {
                                 
                 if (inputRedirectionFlag == SET) {
+                    
+                    int fileExists = access(inputFilename[0], R_OK);
+                    if (fileExists < 0) {
+                        perror("File does not exist, cannot read:");
+                    }
+                    
                     //Returns the file descriptor value of the inputFileName value
                     int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
                     if (inputfd < 0) {
@@ -350,6 +356,12 @@ int main(int argc, char *argv[])
                 }
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
+                    
+                    int fileExists = access(outputFilename[0], W_OK);
+                    if (fileExists == MATCH) {
+                        perror("File exists, cannot write:");
+                    }
+                    
                     //Returns the file descriptor value of the inputFileName value
                     int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT);
                     
