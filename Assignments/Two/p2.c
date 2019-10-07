@@ -23,10 +23,7 @@
 #include <sys/stat.h>       //stat()
 #include "getword.h"
 
-#define MAX_ARGS 100
-#define MAX_CMD_LENGTH 100
-#define MAX_PRM_LENGTH 20   //Max parameter length
-#define MAX_WORD_LENGTH 255
+#define MAX_ARGS 254
 #define START_OF_ARRAY 0
 #define START_INDEX 0
 #define EMPTY 0
@@ -51,9 +48,6 @@ int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAmpersandFlag = NOT_SET;
 int bangbangFlag = NOT_SET;
 //int outputRedirectionAndAmpersandFlag = NOT_SET;
-
-//char *nameOfInputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
-//char *nameOfOutputFileRedirection[MAX_WORD_LENGTH];  //TODO: FIND A WAY TO MALLOC THIS
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
@@ -149,8 +143,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
 
                 //If "cd .." then get the parent directory by removing each directory from chPath
                 if (strcmp(arrayOfArgsLine[directoryIndex], "..") == MATCH) {
-                    char parentDir[MAX_WORD_LENGTH] = {EMPTY};
-                    getcwd(parentDir, MAX_WORD_LENGTH);
+                    char parentDir[MAX_ARGS] = {EMPTY};
+                    getcwd(parentDir, MAX_ARGS);
                     char *lastBackslash = strrchr(parentDir, '/');
                     if (lastBackslash) {
                         *lastBackslash = '\0';
@@ -287,7 +281,6 @@ int main(int argc, char *argv[])
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
 
     
-    //char *command = malloc(MAX_CMD_LENGTH);
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
 
     
@@ -297,7 +290,8 @@ int main(int argc, char *argv[])
         char *outputFilename[1] = {NULL};
         //parameters[MAX_ARGS] = NULL;
         printf("%%1%% \n");
-        fflush(0);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
+        fflush(stdout);
+        fflush(stdin);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
         //fflush(NULL);
         
         //printf("Argc: %d\n", argc);
@@ -359,27 +353,27 @@ int main(int argc, char *argv[])
                     
                     int fileExists = access(outputFilename[0], W_OK);
                     if (fileExists == MATCH) {
-                        perror("File exists, cannot write:");
+                        perror("File exists, cannot write");
                     }
                     
                     //Returns the file descriptor value of the inputFileName value
                     int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT);
                     
                     if (outputfd < 0) {
-                        perror("Outputfd error:");
+                        perror("Outputfd error");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
                     int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
                     if (outputDup < 0) {
-                        perror("Output dup2 error:");
+                        perror("Output dup2 error");
                         exit(1);
                     }
                     
                     if (outputRedirectionAmpersandFlag == SET) {
                         int outputStdErrDup = dup2(outputfd, fileno(stderr));
                         if (outputStdErrDup < 0) {
-                            perror("Stderr dup2 error:");
+                            perror("Stderr dup2 error");
                             exit(1);
                         }
                     }
@@ -389,14 +383,9 @@ int main(int argc, char *argv[])
                 
                 //printf("Child PID: %d\n", pid);
                 execvp (parameters[FIRST_CMD], parameters);
-
-                //execvp("echo", name);
-                //execvp (command, parameters);
-                //fflush(stdout);
-
+                //execvp will only return if it failed
                 perror("EXECVP FAILED");
-                
-                //exit(9);
+                exit(9);
                 
             }
             
@@ -411,7 +400,7 @@ int main(int argc, char *argv[])
 
             wait(NULL);
             //printf("Parent PID: %d\n", pid);
-            fflush(stdin);
+
 
             
 
