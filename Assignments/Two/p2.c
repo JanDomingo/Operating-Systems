@@ -71,6 +71,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int outputRedirectionCharCount = EMPTY;
     int outputAmpersandRedirectionCharCount = EMPTY;
     
+    int builtin_Flag = EMPTY;    //Determines if the parse function will return a 0
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
     //This for loop saves each word passed to the argsLine pointer as elements in arrayOfArgsLine
@@ -144,14 +145,14 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     
     //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
     //This block analyzes if the last character inputted is an ampersand '&'
-    int lastIndex = indexArrayOfArgsLine - 1;
+    int lastIndex = indexArrayOfArgsLine - 1;   //Offset from 0 as start array
     if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
         
         if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
             if (indexArrayOfArgsLine > 1) {
                 ampersandIsLastFlag = SET;
                 parameters[lastIndex] = NULL;   //Removes the & from parameters
-                execCmd[execCmdIndex + 1] = NULL;   //TODO: CHECK IF THIS FIX IS OK
+                //execCmd[execCmdIndex + 1] = NULL;   //TODO: CHECK IF THIS FIX IS OK
             }
             else if (indexArrayOfArgsLine == 1) {
                 return 0;   //Reissues prompt if & is just issued by itself
@@ -194,7 +195,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                         
                     } else if (wordCount > 2) {
                         fprintf(stderr, "%s", "Too many arguments.\n");
-                        return BUILTINS;
+                        builtin_Flag = SET;
+                        continue;
                     }
                     else {
                         chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
@@ -202,7 +204,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
 
                     if ((chdir(chPath) != 0)) {
                         perror("chdir() failed");
-                        return BUILTINS;
+                        builtin_Flag = SET;
+                        continue;
                     }
                 }
                 
@@ -213,7 +216,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 
                 //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
                 parameters[indexArrayOfArgsLine + 1] = NULL;
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             }
         }
         
@@ -233,20 +237,24 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             //If the input file is named ">" then do not copy into the input file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist\n");
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             }
             
             if (inputRedirectionCharCount > 1) {
                 //perror("Cannot have more than one input redirections");
                 fprintf(stderr, "%s", "Ambiguous input redirect\n");
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             } else if (inputRedirectionCharCount == 1) {
                 
                 inputRedirectionFlag = SET;
                 //If the file trying to input does not exist, then
                 if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
+                    loopIteration++;    //TODO: CHECK IF THIS LOOPITERATION++ NEEDS TO BE PLACED ELSEWHERE
                     fprintf(stderr, "%s", "File does not exist\n");
-                    return BUILTINS;
+                    builtin_Flag = SET;
+                    continue;
                 }
                 
                 //Saves the word after the '<' symbol into the inputFileName character array
@@ -260,14 +268,16 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             //If the output file is named ">" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist\n");
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             }
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
                 if (outputRedirectionCharCount > 1) {
                     //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
                     fprintf(stderr, "%s", "Cannot output to multiple files\n");
-                    return BUILTINS;
+                    builtin_Flag = SET;
+                    continue;
                 } else if (outputRedirectionCharCount == 1) {
                     outputRedirectionFlag = SET;
 
@@ -283,13 +293,15 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             //If the output file is named ">" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist\n");
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             }
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputAmpersandRedirectionCharCount > 1) {
                 fprintf(stderr, "%s", "Cannot output to multiple files\n");
-                return BUILTINS;
+                builtin_Flag = SET;
+                continue;
             } else if (outputAmpersandRedirectionCharCount == 1) {
                 outputRedirectionAmpersandFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
@@ -321,10 +333,27 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         execCmd[execCmdIndex++] = strdup(arrayOfArgsLine[loopIteration]);
     }
     
+    //Removes the '&' from execCmd index so it does not get passed into execvp
+    if (execCmd[execCmdIndex - 1] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
+        if ((strcmp(execCmd[execCmdIndex - 1], "&") == MATCH)) {
+            if (indexArrayOfArgsLine > 1) {
+                ampersandIsLastFlag = SET;
+                execCmd[execCmdIndex - 1 ] = NULL;   //TODO: CHECK IF THIS FIX IS OK
+            }
+            else if (indexArrayOfArgsLine == 1) {
+                return BUILTINS;   //Reissues prompt if & is just issued by itself
+            }
+        }
+    }
     
+    if (builtin_Flag == SET) {
+        return BUILTINS;
+    }
     //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
     parameters[indexArrayOfArgsLine + 1] = NULL;
     execCmd[execCmdIndex + 1] = NULL;
+    
+
     //This function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
     memcpy(previousCommandCall, parameters, MAX_ARGS);
