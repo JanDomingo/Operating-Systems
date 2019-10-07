@@ -61,6 +61,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int getwordFnResult;    //fn means function
     int wordCount = EMPTY;
     int breakoutParseFn = NOT_SET;
+    int loopIteration;
     
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
@@ -124,7 +125,6 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
     //This for loop iterates through arrayOfArgsLine and sets global flags
     //Builtins will return 0 and Executables will return 1
-    int loopIteration;
     //TODO: IS A WHILE(1) LOOP MORE SUITABLE FOR THIS SCENARIO?
     for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
@@ -279,7 +279,26 @@ int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-
+    
+    
+    //If the user did not input a "<" to input a file in the command line arguments, then the program will
+    //assume that the user is inputting a path or a file to read in argv[1]. (e.g. ./p2 input.txt)
+    if (strcmp(argv[1], "<") != MATCH) {
+        
+        //Returns the file descriptor value of the inputFileName value
+        int inputfd = open(argv[1], O_RDONLY);  //infd is short for input file descriptor
+        if (inputfd < 0) {
+            perror("Inputfd error: ");
+            exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+        }
+        
+        int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
+        if (inputDup < 0) {
+            perror("Input dup2 error:");
+            exit(1);
+        }
+        close (inputfd);
+    }
     
     //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
 
@@ -329,9 +348,10 @@ int main(int argc, char *argv[])
                                 
                 if (inputRedirectionFlag == SET) {
                     
+                    //Cannot find file to read in
                     int fileExists = access(inputFilename[0], R_OK);
                     if (fileExists < 0) {
-                        perror("File does not exist, cannot read:");
+                        perror("Access error:");
                     }
                     
                     //Returns the file descriptor value of the inputFileName value
@@ -351,9 +371,10 @@ int main(int argc, char *argv[])
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                     
+                    //Cannot overwrite an existing file
                     int fileExists = access(outputFilename[0], W_OK);
                     if (fileExists == MATCH) {
-                        perror("File exists, cannot write");
+                        perror("Ferror");
                     }
                     
                     //Returns the file descriptor value of the inputFileName value
@@ -397,7 +418,7 @@ int main(int argc, char *argv[])
                 printf("%s [%d]\n", parameters[FIRST_CMD], pid);
             }
             
-
+            //TODO: FLUSHING STDIN AND STDOUT HERE WILL CAUSE ISSUES, DO ONLY ONE OF IT NEED TO BE FLUSHED OR IS THIS EVEN THE RIGHT PLACE TO FLUSH?
             wait(NULL);
             //printf("Parent PID: %d\n", pid);
 
