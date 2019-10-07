@@ -38,6 +38,8 @@
 #define LINES_TO_CREATE 1
 #define BUILTINS 0
 #define EXECUTABLE 1
+#define ACCESS_OK 0
+
 
 //TODO: PUT COMMENTS NEXT TO EACH DEFINE STATEMENT AND EXPLAIN WHAT THEY DOw
 
@@ -279,12 +281,16 @@ int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-    
-    
+    char *cmdLineArgs[MAX_ARGS] = {NULL};
+    int cmdLineLoop;
     //If the user did not input a "<" to input a file in the command line arguments, then the program will
     //assume that the user is inputting a path or a file to read in argv[1]. (e.g. ./p2 input.txt)
-    if (strcmp(argv[1], "<") != MATCH) {
-        
+    for (cmdLineLoop = 0; cmdLineLoop < argc; cmdLineLoop++) {
+        cmdLineArgs[cmdLineLoop] = strdup(argv[cmdLineLoop]);
+    }
+    
+    //If a perror was here as an else statement, it would print would the perror every time. TODO: IS THIS ACCEPTABLE?
+    if (access(argv[1], R_OK) == ACCESS_OK) {
         //Returns the file descriptor value of the inputFileName value
         int inputfd = open(argv[1], O_RDONLY);  //infd is short for input file descriptor
         if (inputfd < 0) {
@@ -299,12 +305,9 @@ int main(int argc, char *argv[])
         }
         close (inputfd);
     }
-    
-    //Parameters is the same as argsline but is instead passed into parse() as an array of pointers to char
 
-    
     for(;;) {
-        char *parameters[MAX_ARGS] = {NULL};
+        char *parameters[MAX_ARGS] = {NULL};    //parameters will hold tokenized user input into an array
         char *inputFilename[1] = {NULL};
         char *outputFilename[1] = {NULL};
         //parameters[MAX_ARGS] = NULL;
