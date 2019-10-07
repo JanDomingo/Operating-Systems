@@ -251,6 +251,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 inputRedirectionFlag = SET;
                 //If the file trying to input does not exist, then
                 if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
+                    //inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
                     loopIteration++;    //TODO: CHECK IF THIS LOOPITERATION++ NEEDS TO BE PLACED ELSEWHERE
                     fprintf(stderr, "%s", "File does not exist\n");
                     builtin_Flag = SET;
@@ -415,6 +416,7 @@ int main(int argc, char *argv[])
         inputRedirectionFlag = NOT_SET;
         outputRedirectionFlag = NOT_SET;
         outputRedirectionAmpersandFlag = NOT_SET;
+        ampersandIsLastFlag = NOT_SET;
         
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
@@ -517,7 +519,7 @@ int main(int argc, char *argv[])
             //If an ampersand is placed after a command (.e.g. echo hello &),
             //then print the parent PID and the command argument. In this example: (echo [pid])
             if (ampersandIsLastFlag == SET) {
-                printf("%s [%d]\n", parameters[FIRST_CMD], pid);
+                printf("%s [%d]\n", execCmd[FIRST_CMD], pid);
             }
             
             //TODO: FLUSHING STDIN AND STDOUT HERE WILL CAUSE ISSUES, DO ONLY ONE OF IT NEED TO BE FLUSHED OR IS THIS EVEN THE RIGHT PLACE TO FLUSH?
