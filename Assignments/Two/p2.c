@@ -155,10 +155,16 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                     chPath = strdup(parentDir);
                     
                 //All other paths will obtain whatever th e user inputted after cd
-                } else {
+                //TODO: TEMPORARY FIX FOR THE WORDCOUNT
+                    
+                } else if (wordCount > 2) {
+                    fprintf(stderr, "%s", "chdir: Too many arguments.\n");
+                    return BUILTINS;
+                }
+                else {
                     chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
                 }
-                
+
                 if ((chdir(chPath) != 0)) {
                     perror("chdir() failed");
                     return BUILTINS;
@@ -167,6 +173,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             
             //Executes and changes path to chPath
             chdir(chPath);
+            
             
             //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
             parameters[indexArrayOfArgsLine + 1] = NULL;
@@ -193,6 +200,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             } else if (inputRedirectionFlag == NOT_SET) {
                 inputRedirectionFlag = SET;
                 //Saves the word after the '<' symbol into the inputFileName character array
+                //TODO: ++loopIteration causing segmentation fault on input10
                 inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);    //TODO: USING LOOPITERATION++ WILL CAUSE A THREAD ERROR IF A FILE AFTER THE > OR < or >& SIGN DOES NOT EXIST. MAYBE IMPLEMENT ACCESS FUNCTION TO CHECK FIRST BEFORE STRDUP?
             }
             continue;
@@ -395,6 +403,7 @@ int main(int argc, char *argv[])
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                                        
+                    //TODO: DOUBLE CHECK INPUT 99: ONLY NEED TO WORK ON LAST LINE FOR THIS TEST
                     //Returns the file descriptor value of the inputFileName value
                     int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT, S_IXOTH);
                     if (outputfd < 0) {
