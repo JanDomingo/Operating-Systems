@@ -48,6 +48,7 @@
 int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
+int outputRedirectionAmpersandFlag = NOT_SET;
 int bangbangFlag = NOT_SET;
 //int outputRedirectionAndAmpersandFlag = NOT_SET;
 
@@ -59,7 +60,7 @@ int bangbangFlag = NOT_SET;
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputFileName[], char *previousCommandCall[]) {
+int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outputFilename[], char *previousCommandCall[]) {
     
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
@@ -125,6 +126,7 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
     }
     //******************************************************************************************************//
     
+    
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
     //This for loop iterates through arrayOfArgsLine and sets global flags
     //Builtins will return 0 and Executables will return 1
@@ -174,7 +176,7 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             return BUILTINS;
         }
         
-        //This loop handles the '!!' bang bang command and sets the parameters to execute as the previous
+        //This block handles the '!!' bang bang command and sets the parameters to execute as the previous
         //command
         if ((strcmp(arrayOfArgsLine[loopIteration], "!!")) == MATCH) {
             memcpy(parameters, previousCommandCall, MAX_ARGS);
@@ -182,8 +184,7 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             return EXECUTABLE;
         }
         
-        
-        //***************************THIS SECTION SETS IO REDIRECTION FLAGS*********************************//
+        //**********************THIS SECTION SETS INPUT/OUTPUT REDIRECTION FLAGS****************************//
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
         //TODO: WORK IN PROGRESS
@@ -195,7 +196,7 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             } else if (inputRedirectionFlag == NOT_SET) {
                 inputRedirectionFlag = SET;
                 //Saves the word after the '<' symbol into the inputFileName character array
-                inputFileName = strdup(arrayOfArgsLine[loopIteration + 1]);
+                inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
             }
         }
         
@@ -203,12 +204,26 @@ int parse(char *argsLine, char *parameters[], char *inputFileName, char *outputF
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputRedirectionFlag == SET) {
-                perror("Cannot have more than one input redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
+                perror("Cannot have more than one output redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
             } else if (outputRedirectionFlag == NOT_SET) {
                 outputRedirectionFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
-                parameters[loopIteration] = NULL;
-                outputFileName[0] = strdup(arrayOfArgsLine[loopIteration + 1]);
+                parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
+                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
+            }
+        }
+        
+        //TODO: Could probably combine the loops
+        if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
+            //If the inputRedirectionFlag has already been set from a prior call then print an error
+            //printf("%s", arrayOfArgsLine[loopIteration]);
+            if (outputRedirectionAmpersandFlag == SET) {
+                perror("Cannot have more than one output redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
+            } else if (outputRedirectionAmpersandFlag == NOT_SET) {
+                outputRedirectionAmpersandFlag = SET;
+                //Removes metachar and everything afterwards so that it doesn't get passed into echo
+                parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
+                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[loopIteration + 1]);
             }
         }
         
@@ -278,8 +293,8 @@ int main(int argc, char *argv[])
     
     for(;;) {
         char *parameters[MAX_ARGS] = {NULL};
-        char *inputFileName = NULL;
-        char *outputFileName[1] = {NULL};
+        char *inputFilename[1] = {NULL};
+        char *outputFilename[1] = {NULL};
         //parameters[MAX_ARGS] = NULL;
         printf("%%1%% \n");
         fflush(0);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
@@ -295,7 +310,7 @@ int main(int argc, char *argv[])
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(argsLine, parameters, inputFileName, outputFileName, previousCommandCall);
+        int parseResult = parse(argsLine, parameters, inputFilename, outputFilename, previousCommandCall);
         
         //If !! is not called, then save the current parameters into previousCommandCall
         //If !! is called then previousCommandCall will be passed into execvp
@@ -320,35 +335,43 @@ int main(int argc, char *argv[])
                                 
                 if (inputRedirectionFlag == SET) {
                     //Returns the file descriptor value of the inputFileName value
-                    int inputfd = open(inputFileName, O_CREAT | O_APPEND | O_WRONLY);  //infd is short for input file descriptor
+                    int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
                     if (inputfd < 0) {
-                        perror("Error opening");
+                        perror("Inputfd error: ");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int inputDup = dup2(inputfd, 0);   //Changes the stdin to the inputFileName file
+                    int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
                     if (inputDup < 0) {
-                        perror("input dup2");
+                        perror("Input dup2 error:");
                         exit(1);
                     }
                     close (inputfd);
                 }
                 
-                if (outputRedirectionFlag == SET) {
+                if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFileName[0], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
+                    int outputfd = open(outputFilename[FIRST_CMD], O_WRONLY | O_CREAT);
                     
                     if (outputfd < 0) {
                         perror("Outputfd error:");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
-                    int outputDup;
-                    outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
+                    int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
                     if (outputDup < 0) {
-                        perror("OutputDup2 error:");
+                        perror("Output dup2 error:");
                         exit(1);
                     }
+                    
+                    if (outputRedirectionAmpersandFlag == SET) {
+                        int outputStdErrDup = dup2(outputfd, fileno(stderr));
+                        if (outputStdErrDup < 0) {
+                            perror("Stderr dup2 error:");
+                            exit(1);
+                        }
+                    }
+            
                     close (outputfd);
                 }
                 
