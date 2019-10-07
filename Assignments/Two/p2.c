@@ -230,8 +230,11 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
         //TODO: WORK IN PROGRESS
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
-            //If the inputRedirectionFlag has already been set from a prior call then print an error
-            //printf("%s", arrayOfArgsLine[loopIteration]);
+            //If the input file is named ">" then do not copy into the input file name
+            if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
+                fprintf(stderr, "%s", "File does not exist\n");
+                return BUILTINS;
+            }
             
             if (inputRedirectionCharCount > 1) {
                 //perror("Cannot have more than one input redirections");
@@ -254,24 +257,34 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         }
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">")) == MATCH) {
+            //If the output file is named ">" then do not copy into the output file name
+            if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
+                fprintf(stderr, "%s", "File does not exist\n");
+                return BUILTINS;
+            }
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
-            if (outputRedirectionCharCount > 1) {
-                //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
-                fprintf(stderr, "%s", "Cannot output to multiple files\n");
-                return BUILTINS;
-            } else if (outputRedirectionCharCount == 1) {
-                outputRedirectionFlag = SET;
+                if (outputRedirectionCharCount > 1) {
+                    //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
+                    fprintf(stderr, "%s", "Cannot output to multiple files\n");
+                    return BUILTINS;
+                } else if (outputRedirectionCharCount == 1) {
+                    outputRedirectionFlag = SET;
 
-                //Removes metachar and everything afterwards so that it doesn't get passed into echo
-                parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
-                outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
-            }
-            continue;
+                    //Removes metachar and everything afterwards so that it doesn't get passed into echo
+                    parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
+                    outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
+                }
+                continue;
         }
         
         //TODO: Could probably combine the loops
         if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
+            //If the output file is named ">" then do not copy into the output file name
+            if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
+                fprintf(stderr, "%s", "File does not exist\n");
+                return BUILTINS;
+            }
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputAmpersandRedirectionCharCount > 1) {
@@ -402,7 +415,7 @@ int main(int argc, char *argv[])
                 exit(1);
             }
 
-            pid = CHILD;    //TODO: USED FOR DEBUGGING, DELETE THIS LINE AFTER DONE WORKING ON PROGRAM
+            //pid = CHILD;    //TODO: USED FOR DEBUGGING, DELETE THIS LINE AFTER DONE WORKING ON PROGRAM
             if (pid == CHILD) {
                                 
                 if (inputRedirectionFlag == SET) {
