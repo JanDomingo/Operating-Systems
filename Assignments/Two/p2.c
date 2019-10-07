@@ -150,51 +150,53 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         
         //*******************************THIS SECTION HANDLES BUILTINS**************************************//
         //This block handles the 'cd' commands and uses chdir() to change the directory
-        if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
-            //Saves the directory path to change into
-            char *chPath = {NULL};  //chPath is shortened for change path
-            
-            //If cd is the only argument then change directory to home
-            int directoryIndex = loopIteration + 1;
-            if (arrayOfArgsLine[directoryIndex] == NULL) {
-                char *homeDir = getenv("HOME");
-                chPath = homeDir;
-            } else {
+        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "echo") != MATCH)) {
+            if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
+                //Saves the directory path to change into
+                char *chPath = {NULL};  //chPath is shortened for change path
+                
+                //If cd is the only argument then change directory to home
+                int directoryIndex = loopIteration + 1;
+                if (arrayOfArgsLine[directoryIndex] == NULL) {
+                    char *homeDir = getenv("HOME");
+                    chPath = homeDir;
+                } else {
 
-                //If "cd .." then get the parent directory by removing each directory from chPath
-                if (strcmp(arrayOfArgsLine[directoryIndex], "..") == MATCH) {
-                    char parentDir[MAX_ARGS] = {EMPTY};
-                    getcwd(parentDir, MAX_ARGS);
-                    char *lastBackslash = strrchr(parentDir, '/');
-                    if (lastBackslash) {
-                        *lastBackslash = '\0';
+                    //If "cd .." then get the parent directory by removing each directory from chPath
+                    if (strcmp(arrayOfArgsLine[directoryIndex], "..") == MATCH) {
+                        char parentDir[MAX_ARGS] = {EMPTY};
+                        getcwd(parentDir, MAX_ARGS);
+                        char *lastBackslash = strrchr(parentDir, '/');
+                        if (lastBackslash) {
+                            *lastBackslash = '\0';
+                        }
+                        chPath = strdup(parentDir);
+                        
+                    //All other paths will obtain whatever th e user inputted after cd
+                    //TODO: TEMPORARY FIX FOR THE WORDCOUNT
+                        
+                    } else if (wordCount > 2) {
+                        fprintf(stderr, "%s", "Too many arguments.\n");
+                        return BUILTINS;
                     }
-                    chPath = strdup(parentDir);
-                    
-                //All other paths will obtain whatever th e user inputted after cd
-                //TODO: TEMPORARY FIX FOR THE WORDCOUNT
-                    
-                } else if (wordCount > 2) {
-                    fprintf(stderr, "%s", "chdir: Too many arguments.\n");
-                    return BUILTINS;
-                }
-                else {
-                    chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
-                }
+                    else {
+                        chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
+                    }
 
-                if ((chdir(chPath) != 0)) {
-                    perror("chdir() failed");
-                    return BUILTINS;
+                    if ((chdir(chPath) != 0)) {
+                        perror("chdir() failed");
+                        return BUILTINS;
+                    }
                 }
+                
+                //Executes and changes path to chPath
+                chdir(chPath);
+                
+                
+                //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
+                parameters[indexArrayOfArgsLine + 1] = NULL;
+                return BUILTINS;
             }
-            
-            //Executes and changes path to chPath
-            chdir(chPath);
-            
-            
-            //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
-            parameters[indexArrayOfArgsLine + 1] = NULL;
-            return BUILTINS;
         }
         
         //This block handles the '!!' bang bang command and sets the parameters to execute as the previous
@@ -215,14 +217,14 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             
             if (inputRedirectionCharCount > 1) {
                 //perror("Cannot have more than one input redirections");
-                fprintf(stderr, "%s", "Ambiguous input redirect.");
+                fprintf(stderr, "%s", "Ambiguous input redirect\n");
                 return BUILTINS;
             } else if (inputRedirectionCharCount == 1) {
                 
                 inputRedirectionFlag = SET;
                 //If the file trying to input does not exist, then
                 if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
-                    fprintf(stderr, "%s", "File does not exist");
+                    fprintf(stderr, "%s", "File does not exist\n");
                     return BUILTINS;
                 }
                 
@@ -238,7 +240,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputRedirectionCharCount > 1) {
                 //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
-                fprintf(stderr, "%s", "Cannot output to multiple files");
+                fprintf(stderr, "%s", "Cannot output to multiple files\n");
                 return BUILTINS;
             } else if (outputRedirectionCharCount == 1) {
                 outputRedirectionFlag = SET;
@@ -255,7 +257,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
             if (outputAmpersandRedirectionCharCount > 1) {
-                fprintf(stderr, "%s", "Cannot output to multiple files");
+                fprintf(stderr, "%s", "Cannot output to multiple files\n");
                 return BUILTINS;
             } else if (outputAmpersandRedirectionCharCount == 1) {
                 outputRedirectionAmpersandFlag = SET;
@@ -329,14 +331,9 @@ int main(int argc, char *argv[])
 {
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-    char *cmdLineArgs[MAX_ARGS] = {NULL};
-
-    int cmdLineLoop;
     //If the user did not input a "<" to input a file in the command line arguments, then the program will
     //assume that the user is inputting a path or a file to read in argv[1]. (e.g. ./p2 input.txt)
-    for (cmdLineLoop = 0; cmdLineLoop < argc; cmdLineLoop++) {
-        cmdLineArgs[cmdLineLoop] = strdup(argv[cmdLineLoop]);
-    }
+
     
     //If the user inputs a "<" to specify a file, this would still run but not print out anything. If
     //there was a perror as an else statement, then it would print the perror everytime. TODO: IS THIS ACCEPTABLE?
@@ -436,7 +433,7 @@ int main(int argc, char *argv[])
                                        
                     //TODO: DOUBLE CHECK INPUT 99: ONLY NEED TO WORK ON LAST LINE FOR THIS TEST
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT, S_IXOTH);
+                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
                     if (outputfd < 0) {
                         perror("Outputfd error");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
