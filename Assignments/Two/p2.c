@@ -21,6 +21,7 @@
 #include <fcntl.h>          //open()
 #include <sys/wait.h>       //wait()
 #include <sys/stat.h>       //stat()
+#include <errno.h>
 #include "getword.h"
 
 #define MAX_ARGS 254
@@ -66,6 +67,10 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int loopIteration;
     int execCmdIndex = EMPTY;
     
+    int inputRedirectionCharCount = EMPTY;
+    int outputRedirectionCharCount = EMPTY;
+    int outputAmpersandRedirectionCharCount = EMPTY;
+    
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
     //This for loop saves each word passed to the argsLine pointer as elements in arrayOfArgsLine
@@ -80,6 +85,18 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
             indexArrayOfArgsLine++;
             wordCount++;
+
+            if ((strcmp(argsLine, "<") == MATCH)) {
+                inputRedirectionCharCount++;
+            }
+            
+            if ((strcmp(argsLine, ">") == MATCH)) {
+                outputRedirectionCharCount++;
+            }
+            
+            if ((strcmp(argsLine, ">&") == MATCH)) {
+                outputRedirectionCharCount++;
+            }
         }
         
         //If the user pressed 'enter' after inputting words, then break and start evaluating words
@@ -195,10 +212,20 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
-            if (inputRedirectionFlag == SET) {
-                perror("Cannot have more than one input redirections");
-            } else if (inputRedirectionFlag == NOT_SET) {
+            
+            if (inputRedirectionCharCount > 1) {
+                //perror("Cannot have more than one input redirections");
+                fprintf(stderr, "%s", "Ambiguous input redirect.");
+                return BUILTINS;
+            } else if (inputRedirectionCharCount == 1) {
+                
                 inputRedirectionFlag = SET;
+                //If the file trying to input does not exist, then
+                if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
+                    fprintf(stderr, "%s", "File does not exist");
+                    return BUILTINS;
+                }
+                
                 //Saves the word after the '<' symbol into the inputFileName character array
                 //TODO: ++loopIteration causing segmentation fault on input10
                 inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);    //TODO: USING LOOPITERATION++ WILL CAUSE A THREAD ERROR IF A FILE AFTER THE > OR < or >& SIGN DOES NOT EXIST. MAYBE IMPLEMENT ACCESS FUNCTION TO CHECK FIRST BEFORE STRDUP?
@@ -209,10 +236,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         if ((strcmp(arrayOfArgsLine[loopIteration], ">")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
-            if (outputRedirectionFlag == SET) {
-                perror("Cannot have more than one output redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
-            } else if (outputRedirectionFlag == NOT_SET) {
+            if (outputRedirectionCharCount > 1) {
+                //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
+                fprintf(stderr, "%s", "Cannot output to multiple files");
+                return BUILTINS;
+            } else if (outputRedirectionCharCount == 1) {
                 outputRedirectionFlag = SET;
+
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
                 parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
                 outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
@@ -224,9 +254,10 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
             //If the inputRedirectionFlag has already been set from a prior call then print an error
             //printf("%s", arrayOfArgsLine[loopIteration]);
-            if (outputRedirectionAmpersandFlag == SET) {
-                perror("Cannot have more than one output redirections"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
-            } else if (outputRedirectionAmpersandFlag == NOT_SET) {
+            if (outputAmpersandRedirectionCharCount > 1) {
+                fprintf(stderr, "%s", "Cannot output to multiple files");
+                return BUILTINS;
+            } else if (outputAmpersandRedirectionCharCount == 1) {
                 outputRedirectionAmpersandFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
                 parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
