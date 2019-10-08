@@ -72,6 +72,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int outputAmpersandRedirectionCharCount = EMPTY;
     
     int builtin_Flag = EMPTY;    //Determines if the parse function will return a 0
+    
+    int printCount = EMPTY;     //Prints only one "Ambiguous input redirect" error message
+    
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
     //This for loop saves each word passed to the argsLine pointer as elements in arrayOfArgsLine
@@ -96,7 +99,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             
             if ((strcmp(argsLine, ">&") == MATCH)) {
-                outputRedirectionCharCount++;
+                outputAmpersandRedirectionCharCount++;
             }
         }
         
@@ -243,7 +246,11 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             
             if (inputRedirectionCharCount > 1) {
                 //perror("Cannot have more than one input redirections");
-                fprintf(stderr, "%s", "Ambiguous input redirect\n");
+
+                if (printCount == 0) {
+                    fprintf(stderr, "%s", "Ambiguous input redirect\n");
+                    printCount = 1;
+                }
                 builtin_Flag = SET;
                 continue;
             } else if (inputRedirectionCharCount == 1) {
@@ -461,13 +468,13 @@ int main(int argc, char *argv[])
                     //Returns the file descriptor value of the inputFileName value
                     int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
                     if (inputfd < 0) {
-                        perror("Inputfd error: ");
+                        //perror("Inputfd error: ");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
                     int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
                     if (inputDup < 0) {
-                        perror("Input dup2 error:");
+                        //perror("Input dup2 error:");
                         exit(1);
                     }
                     close (inputfd);
@@ -479,28 +486,29 @@ int main(int argc, char *argv[])
                     //Returns the file descriptor value of the inputFileName value
                     int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
                     if (outputfd < 0) {
-                        perror("Outputfd error");
+                        //perror("Outputfd error");
                         exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
                     }
                     
                     int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
                     if (outputDup < 0) {
-                        perror("Output dup2 error");
+                        //perror("Output dup2 error");
                         exit(1);
+                    }
+                    
+                    //If ">&" then also save the stderr to the output file
+                    if (outputRedirectionAmpersandFlag == SET) {
+                        int outputStdErrDup = dup2(outputfd, fileno(stderr));
+                        if (outputStdErrDup < 0) {
+                            //perror("Stderr dup2 error");
+                            exit(1);
+                        }
                     }
                     
                     //Cannot overwrite an existing file
                     int fileExists = access(outputFilename[FIRST_CMD], W_OK);
                     if (fileExists != MATCH) {
-                        perror("Access output error");
-                    }
-                    
-                    if (outputRedirectionAmpersandFlag == SET) {
-                        int outputStdErrDup = dup2(outputfd, fileno(stderr));
-                        if (outputStdErrDup < 0) {
-                            perror("Stderr dup2 error");
-                            exit(1);
-                        }
+                        //perror("Access output error");
                     }
             
                     close (outputfd);

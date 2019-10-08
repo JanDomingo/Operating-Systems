@@ -1,1 +1,1 @@
-/usr/bin/uname -aardvark >& your.outputE
+ /usr/bin/uname -aardvark >& your.outputE
