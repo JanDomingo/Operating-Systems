@@ -50,6 +50,8 @@ int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAmpersandFlag = NOT_SET;
 int bangbangFlag = NOT_SET;
+int previousCmdCallSize;
+
 //int outputRedirectionAndAmpersandFlag = NOT_SET;
 
 //**********************************************************************************************************//
@@ -58,7 +60,6 @@ int bangbangFlag = NOT_SET;
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
 int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outputFilename[], char *previousCommandCall[], char *execCmd[]) {
-    
     char *arrayOfArgsLine[MAX_ARGS] = {NULL};
     int indexArrayOfArgsLine = START_OF_ARRAY;
     int getwordFnResult;    //fn means function
@@ -83,12 +84,39 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         
         getwordFnResult = getword(argsLine);
         
+        if ((wordCount == 0) && (strcmp(argsLine, "!!") == MATCH)) {
+            //If "!!" is the first word then set the stdin as the array of previous comands
+            memcpy(arrayOfArgsLine, previousCommandCall, MAX_ARGS);
+            memcpy(parameters, previousCommandCall, MAX_ARGS);
+            indexArrayOfArgsLine = previousCmdCallSize;
+            wordCount = previousCmdCallSize;
+            //indexArrayOfArgsLine = previousCmdCallSize;
+            //wordCount = previousCmdCallSize;
+            break;
+        }
+        
         //If the user inputted words, store into arrayOfArgsLine
         if (getwordFnResult > EMPTY) {
-            arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
-            parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
-            indexArrayOfArgsLine++;
-            wordCount++;
+            if ((strcmp(argsLine, "\\") == MATCH)) {
+                continue;
+            }
+            
+            //Maximum word that can be copied. Prevents buffer overflow
+            //TODO: CHECK IF THIS IS NEEDED??????????????????????????????????
+            if (getwordFnResult == 254) {
+                char maxWord[MAX_ARGS + 1] = {EMPTY};
+                strcpy(maxWord, argsLine);
+                arrayOfArgsLine[indexArrayOfArgsLine] = strdup(maxWord);
+                parameters[indexArrayOfArgsLine] = strdup(maxWord);
+            } else {
+                arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
+                parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
+            }
+                indexArrayOfArgsLine++;
+                wordCount++;
+                previousCmdCallSize = indexArrayOfArgsLine;
+            
+            
 
             if ((strcmp(argsLine, "<") == MATCH)) {
                 inputRedirectionCharCount++;
@@ -124,11 +152,12 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                     parameters[indexArrayOfArgsLine] = strdup(argsLine);
                     indexArrayOfArgsLine++;
                     wordCount++;
-                    getwordFnResult = 4;
+
+                    getwordFnResult = 4;    //Done is not the first word and is just treated as a regular word
                 }
             }
             
-            //If word is not done but getwordFnResult is -1 then break
+            //If word is not "done" but getwordFnResult is -1 then break
             else if (wordCount == EMPTY) {
                 breakoutParseFn = TERMINATED;
                 break;
@@ -147,6 +176,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     
     
     //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
+
     //This block analyzes if the last character inputted is an ampersand '&'
     int lastIndex = indexArrayOfArgsLine - 1;   //Offset from 0 as start array
     if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
@@ -226,11 +256,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         
         //This block handles the '!!' bang bang command and sets the parameters to execute as the previous
         //command
-        if ((strcmp(arrayOfArgsLine[loopIteration], "!!")) == MATCH) {
+        /*
+        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "!!")) == MATCH) {
             memcpy(execCmd, previousCommandCall, MAX_ARGS);
             memcpy(previousCommandCall, execCmd, MAX_ARGS);
             return EXECUTABLE;
         }
+         */
         
         //**********************THIS SECTION SETS INPUT/OUTPUT REDIRECTION FLAGS****************************//
         //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
@@ -367,6 +399,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     //This function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
     memcpy(previousCommandCall, execCmd, MAX_ARGS);
+    previousCmdCallSize = indexArrayOfArgsLine;
     return EXECUTABLE;
 }
 
@@ -378,12 +411,12 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
 
 int main(int argc, char *argv[])
 {
+    //****************************************DECLARATION OF LOCALS*****************************************//
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-    //If the user did not input a "<" to input a file in the command line arguments, then the program will
-    //assume that the user is inputting a path or a file to read in argv[1]. (e.g. ./p2 input.txt)
 
-    
+
+    //****************************THIS SECTION HANDLES PRE SENSING OF ARGV[1]*******************************//
     //If the user inputs a "<" to specify a file, this would still run but not print out anything. If
     //there was a perror as an else statement, then it would print the perror everytime. TODO: IS THIS ACCEPTABLE?
     if (access(argv[1], R_OK) == ACCESS_OK) {
@@ -403,25 +436,21 @@ int main(int argc, char *argv[])
         }
         close (cmdlineInputfd);
     }
-
+    
+    //*********************************THIS SECTION CREATES SIGNALS*****************************************//
+    
+    
+    
+    //************************THIS LOOP PROMPTS THE USER UNTIL EOF/TERMINATION******************************//
     for(;;) {
         char *parameters[MAX_ARGS] = {NULL};    //parameters will hold tokenized user input into an array
         char *execCmd[MAX_ARGS] = {NULL};
         char *inputFilename[1] = {NULL};
         char *outputFilename[1] = {NULL};
-        //parameters[MAX_ARGS] = NULL;
-        printf("%%1%% \n");
+        printf("%%1%% ");
         fflush(stdout);
         fflush(stdin);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
-        //fflush(NULL);
-        
-        //printf("Argc: %d\n", argc);
-        //int callback = 0;
-        //int parse2Result;
-        //parse2(callback);
 
-        //printf("%d", parse2Result);
-        
         inputRedirectionFlag = NOT_SET;
         outputRedirectionFlag = NOT_SET;
         outputRedirectionAmpersandFlag = NOT_SET;
@@ -431,6 +460,8 @@ int main(int argc, char *argv[])
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
         int parseResult = parse(argsLine, parameters, inputFilename, outputFilename, previousCommandCall, execCmd);
+    
+ 
         
         //If !! is not called, then save the current parameters into previousCommandCall
         //If !! is called then previousCommandCall will be passed into execvp
@@ -515,17 +546,12 @@ int main(int argc, char *argv[])
             
                     close (outputfd);
                 }
-                
-                //printf("Child PID: %d\n", pid);
                 execvp (execCmd[FIRST_CMD], execCmd);
                 //execvp will only return if it failed
                 perror("EXECVP FAILED");
                 exit(9);
-                
             }
-            
             //THIS IS NOW THE PARENT PROCESS
-            
             //If an ampersand is placed after a command (.e.g. echo hello &),
             //then print the parent PID and the command argument. In this example: (echo [pid])
             if (ampersandIsLastFlag == SET) {
@@ -533,34 +559,10 @@ int main(int argc, char *argv[])
             } else {
                 wait(NULL);
             }
-            //printf("Parent PID: %d\n", pid);
-
-
-            
-
-
-            //exit(0);
         }
-        
-        
-        
-        
-        
-        /*
-        int status;
-        pid = wait(&status);
-        
-        if (WIFEXITED(status)) {
-            //printf("pid %d exited with status %d\n", pid, WEXITSTATUS(status));
-        } else {
-            //printf("pid %d exited abnormally\n", pid);
-        }*/
-        //printf("%s", "parent\n");
-        
-
-        //exit(1);
     }
     
+    //killpg(getpgrp(), SIGTERM);
     printf("p2 terminated.\n");
     exit(0);
     
