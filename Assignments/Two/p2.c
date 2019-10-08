@@ -97,7 +97,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         
         //If the user inputted words, store into arrayOfArgsLine
         if (getwordFnResult > EMPTY) {
-            if ((strcmp(argsLine, "\\") == MATCH)) {
+            if ((strcmp(argsLine, "\\") == MATCH)) {    //TODO: FIX THIS NOT WORKING, NOT SURE IF THIS IS EVEN NEEDED
+                arrayOfArgsLine[indexArrayOfArgsLine] = EMPTY;   //Prevents "\" from passing into program
                 continue;
             }
             
@@ -192,6 +193,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
         }
     }
+    
+    //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
+    //previousCmdCallSize = indexArrayOfArgsLine;
     
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
     //This for loop iterates through arrayOfArgsLine and sets global flags
@@ -371,9 +375,12 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             pwd_Print = SET;
         }
-        execCmd[execCmdIndex++] = strdup(arrayOfArgsLine[loopIteration]);
+        //Exec cmd index working properly for echo, but not for cd. cd does not use this.
+        execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
+        execCmdIndex++;
     }
     
+    //This section starts to return to main based on the return type
     //Removes the '&' from execCmd index so it does not get passed into execvp
     if (execCmd[execCmdIndex - 1] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
         if ((strcmp(execCmd[execCmdIndex - 1], "&") == MATCH)) {
@@ -388,6 +395,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     }
 
     if (builtin_Flag == SET) {
+        //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         memcpy(previousCommandCall, execCmd, MAX_ARGS);
         return BUILTINS;
     }
@@ -398,9 +406,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
 
     //This function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
-    memcpy(previousCommandCall, execCmd, MAX_ARGS);
+    memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
     previousCmdCallSize = indexArrayOfArgsLine;
     return EXECUTABLE;
+}
+
+void signalHandler(int signal) {
+    
 }
 
 
@@ -414,7 +426,9 @@ int main(int argc, char *argv[])
     //****************************************DECLARATION OF LOCALS*****************************************//
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
-
+    
+    setpgid(0,0);
+    (void) signal(SIGTERM, signalHandler);
 
     //****************************THIS SECTION HANDLES PRE SENSING OF ARGV[1]*******************************//
     //If the user inputs a "<" to specify a file, this would still run but not print out anything. If
@@ -562,7 +576,7 @@ int main(int argc, char *argv[])
         }
     }
     
-    //killpg(getpgrp(), SIGTERM);
+    killpg(getpgrp(), SIGTERM);
     printf("p2 terminated.\n");
     exit(0);
     
