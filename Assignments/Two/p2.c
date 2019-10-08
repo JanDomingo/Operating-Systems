@@ -227,8 +227,8 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         //This block handles the '!!' bang bang command and sets the parameters to execute as the previous
         //command
         if ((strcmp(arrayOfArgsLine[loopIteration], "!!")) == MATCH) {
-            memcpy(parameters, previousCommandCall, MAX_ARGS);
-            memcpy(previousCommandCall, parameters, MAX_ARGS);
+            memcpy(execCmd, previousCommandCall, MAX_ARGS);
+            memcpy(previousCommandCall, execCmd, MAX_ARGS);
             return EXECUTABLE;
         }
         
@@ -323,12 +323,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
         //TODO: FIGURE OUT IF THIS SECTION IS NECESSARY SINCE EXECUTABLES ARE ALREADY IN THE PARAMETERS ARRAY
         //This block handles the case of "echo" and "ls" commands
+        /*
         if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
             (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
             //strcpy(command, arrayOfArgsLine[loopIteration]);
             //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
             //break;
-        }
+        }*/
         
         //This block handles the "pwd" command
         //TODO: CHECK IF THE PWD_PRINT STATIC INT IS NECESSARY
@@ -353,18 +354,19 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
         }
     }
-    
+
     if (builtin_Flag == SET) {
+        memcpy(previousCommandCall, execCmd, MAX_ARGS);
         return BUILTINS;
     }
     //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
-    parameters[indexArrayOfArgsLine + 1] = NULL;
-    execCmd[execCmdIndex + 1] = NULL;
+    parameters[indexArrayOfArgsLine + 1] = NULL;    //TODO: CHECK IF + 1 IS STILL NEEDED HERE DUE TO THE IMPLEMENETATION OF LOOPITERATION++
+    execCmd[execCmdIndex + 1] = NULL;               //TODO: CHECK IF + 1 IS STILL NEEDED HERE DUE TO THE IMPLEMENETATION OF LOOPITERATION++
     
 
     //This function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
-    memcpy(previousCommandCall, parameters, MAX_ARGS);
+    memcpy(previousCommandCall, execCmd, MAX_ARGS);
     return EXECUTABLE;
 }
 
@@ -528,10 +530,9 @@ int main(int argc, char *argv[])
             //then print the parent PID and the command argument. In this example: (echo [pid])
             if (ampersandIsLastFlag == SET) {
                 printf("%s [%d]\n", execCmd[FIRST_CMD], pid);
+            } else {
+                wait(NULL);
             }
-            
-            //TODO: FLUSHING STDIN AND STDOUT HERE WILL CAUSE ISSUES, DO ONLY ONE OF IT NEED TO BE FLUSHED OR IS THIS EVEN THE RIGHT PLACE TO FLUSH?
-            wait(NULL);
             //printf("Parent PID: %d\n", pid);
 
 
