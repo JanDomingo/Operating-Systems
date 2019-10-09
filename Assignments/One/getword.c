@@ -175,12 +175,6 @@ int getword(char *w)
                 continue;           //Gets the next iochar in the while loop
 
         }
-        
-        /*************THIS SECTION CHECKS IF THE CHARACTER IS A BACKSLASH AGAIN (e.g. \|\|) ********************/
-        
-        
-        
-        
 
         /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER***********************/
         //If the character is a meta character and there is a current word, then return the current wordsize
