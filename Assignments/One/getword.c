@@ -5,10 +5,10 @@
 //  Course: CS570 Operating Systems
 //  Instructor Name: John Carroll
 //  Section: 1
-//  Due Date: September 16, 2019
-//  Assignment: Program 1
+//  Due Date: October 9, 2019
+//  Assignment: Program 2
 //  File name: getword.c
-//  Compiler Version: XCode 10.2.1
+//  Compiler Version: XCode 11.0 (11A420a)
 //
 //  The getword function (line 135) examines successive words on the input stream (stdin) and returns the size
 //  of each word of the user input and adds each character into the w pointer. The driver program p1.c then
@@ -123,7 +123,7 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
     if (metaCharacterCheck(iochar) == NOT_META)
         ungetc(iochar, stdin);          //If the character is not a meta character anymore then ungetc
     
-    return metaCharWordSize;            //Return '>' 
+    return metaCharWordSize;            //Return '>'
 }
 
 /************************************************************************************************************/
@@ -201,6 +201,7 @@ int getword(char *w)
         if (iochar == NEWLINE) {
             //If there is a newline after "done"
             if (strcmp(startOfWordPtr, "done") == EMPTY) {
+                ungetc(iochar, stdin);    //Return current word and keep the newline character for the next
                 return FINISH;
             }
             
