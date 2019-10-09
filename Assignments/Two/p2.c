@@ -531,18 +531,20 @@ int main(int argc, char *argv[])
             }
             
             //THIS IS NOW THE PARENT PROCESS
-            //If an ampersand is placed after a command (.e.g. echo hello &),
-            //then print the parent PID and the command argument. In this example: (echo [pid])
+            
+            //If an ampersand is placed after a command then it is the background proecess.
+            //This print the parent PID and the command argument. In this example: (echo [pid])
             if (ampersandIsLastFlag == SET) {
                 //Background jobs do not wait for child
                 printf("%s [%d]\n", execCmd[FIRST_CMD], pid);
                 
                 //Redirects the child input to dev/null and ensures background jobs cannot read from terminal
-                int devnullpd = open("/dev/null", O_WRONLY);
-                if (devnullpd < 0) exit(1);
-                int devnulldup2 = dup2(devnullpd, fileno(stdin));
-                if (devnulldup2 < 0) exit(1);
-                
+                //int devnullpd = open("/dev/null", O_RDWR);
+                //if (devnullpd < 0) exit(1);
+                //int devnulldup2 = dup2(devnullpd, fileno(stdin));
+                //if (devnulldup2 < 0) exit(1);
+                //close(devnullpd);
+
             } else {
                 //Non-backgrounded jobs wait for child
                 wait(NULL);
