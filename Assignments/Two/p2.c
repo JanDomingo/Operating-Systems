@@ -10,8 +10,33 @@
 //  File name: p2.c
 //  Compiler Version: XCode 11.0 (11A420a)
 //
-//  This program is a command line interpreter for the UNIX system
-//  TODO: CONTINUE FILLING OUT DESCRIPTION COMMENT OF THE PROGRAM
+//  This program is a command line interpreter for the UNIX system and acts like a shell. It handles built in
+//  commands such as (done, cd, and !!) as well as executables such as (echo, ls, sleep, and filepaths to
+//  executables. If the command is an executable then an execution of the command is made inside the child
+//  of a fork. Additionally, this program also handles unix redirection with the ">", "<", and the ">&"
+//  metacharacters. If the program is misused, appropriate error messages /are also displayed. This program
+//  also uses basic signal handling. An example of basic use of this program is: "echo hello > createFile.txt"
+//
+//  Program logic/alogorithm: The program first starts an intialization of the signal catcher followed by
+//  a prompt then checking argv[1] so that the program can also read in inputs with existing filenames in
+//  argv[1] and bypass the use of a "<" redirection. The program then enters the parse() function which
+//  returns an int. Inside the parse function, tokenization is done by running  the getword() function as
+//  declared in getword.c with the parameter (argsline). With each return of the getword(argsline), the
+//  character pointer in argsline is stored into arrayOfArgsLine, an array of character pointers. The
+//  tokenization section also handles the builtin "!!" and "done" command which reinputs previous command
+//  entered and terminates the program respectively. Once a new line of EOF of the input stream is reached,
+//  then the tokenization ends and the analyzation begins. A for loop iterates through each word in
+//  arrayOfArgsLine and settings flags. First, it checks for the builtin "cd", determining which path to
+//  change directory (chdir) to. Since parse() is an int function, it returns 1 by deault if the program does
+//  not trigger the builtin_Flag. Triggering the builtin_Flag will return 0 and main does not fork and excute
+//  but instead reruns the prompts and wait for stdin/user input. Then it checks for IO redirection, setting
+//  flags and saving filenames and finally returns a 1 to main(). In main(), as stated earlier, it checks for
+//  what the parse() returned. A 0 reruns the prompts and a 1 creates a fork. Inside the child of the fork,
+//  if IO redirection was specified in parse, the stdin and stdout are changed to the filenames that were
+//  specified. The child of the fork then runs an execvp of the command that the user inputed. In the parent
+//  fork, if the background jobs will not wait for a child is the user inputted an ampersand as the last
+//  character in their input. Otherwise, non backgrounded jobs will wait for the child. When an EOF is reached
+//  from stdin, the program then kills the process group signal and exits successfully.
 
 #include <stdio.h>          //fflush()
 #include <stdlib.h>         //getenv(), exit()
@@ -25,42 +50,40 @@
 #include "getword.h"
 
 #define MAX_ARGS 254
-#define START_OF_ARRAY 0
-#define START_INDEX 0
-#define EMPTY 0
-#define NOT_SET 0
-#define FILE_EXISTS 0
-#define CHILD 0
-#define SET 1
-#define MATCH 0
-#define FIRST_CMD 0
+
 #define FORK_FAILED -1
 #define TERMINATED -1
-#define LINES_TO_CREATE 1
-#define BUILTINS 0
-#define EXECUTABLE 1
+
+#define EMPTY 0
+#define FILE_EXISTS 0
+#define CHILD 0
+#define MATCH 0
+#define FIRST_CMD 0
 #define ACCESS_OK 0
+#define BUILTINS 0
+#define NOT_SET 0
+#define SET 1
+#define EXECUTABLE 1
 
 
-//TODO: PUT COMMENTS NEXT TO EACH DEFINE STATEMENT AND EXPLAIN WHAT THEY DOw
 
 //Global Variables
 int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAmpersandFlag = NOT_SET;
-int bangbangFlag = NOT_SET;
 int previousCmdCallSize;
 
-//int outputRedirectionAndAmpersandFlag = NOT_SET;
+
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
 //This function is responsible for the syntactic analysis
 //This will set appropriate flags when getword() encounters words that are metacharacters
-int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inputFilename[], char *outputFilename[], char *previousCommandCall[], char *execCmd[]) {
-    int indexArrayOfArgsLine = START_OF_ARRAY;
+int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inputFilename[],
+          char *outputFilename[], char *previousCommandCall[], char *execCmd[]) {
+    int indexArrayOfArgsLine = EMPTY;
     int getwordFnResult;    //fn means function
     int wordCount = EMPTY;
     int breakoutParseFn = NOT_SET;
@@ -83,7 +106,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         
         getwordFnResult = getword(argsLine);
         
-        //************************THIS SECTION HANDLES THE !! Bang Bang Character***************************//
+        //************************THIS SECTION HANDLES THE !! BANG BANG CHARACTER***************************//
         if ((wordCount == 0) && (strcmp(argsLine, "!!") == MATCH)) {
             //If "!!" is the first word then set the stdin as the array of previous comands
             memcpy(arrayOfArgsLine, previousCommandCall, MAX_ARGS);
@@ -101,12 +124,13 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         
         if (getwordFnResult > EMPTY) {
-                //Copies the word buffer created from getword() and into arrays
-                arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
-                parameters[indexArrayOfArgsLine] = strdup(argsLine);
-                indexArrayOfArgsLine++;
-                wordCount++;
-                previousCmdCallSize = indexArrayOfArgsLine;
+            
+            //Copies the word buffer created from getword() and into arrays
+            arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
+            parameters[indexArrayOfArgsLine] = strdup(argsLine);
+            indexArrayOfArgsLine++;
+            wordCount++;
+            previousCmdCallSize = indexArrayOfArgsLine;
             
             if ((strcmp(argsLine, "<") == MATCH)) {
                 inputRedirectionCharCount++;
@@ -121,16 +145,16 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
         
-        //If the user pressed 'enter' after inputting words, then break and start evaluating words
+        //If there is a newline after words, then break and start evaluating words
+        //If there is a only a newline and no words, then rerun the prompt in main()
         if ((getwordFnResult == EMPTY) && (wordCount > EMPTY)) {
             break;
         } else if ((getwordFnResult == EMPTY) && (wordCount == EMPTY)) {
-            return EMPTY;   //Return 0 if the user simply inputted a newline
+            return EMPTY;
         }
         
-        //If getwordFnResult returned either the word "done" or EOF
+        //This block handles the end of stdin
         if (getwordFnResult == TERMINATED){
-            
             //This block checks if the user inputted the word "done"
             if (strcmp(argsLine, "done") == MATCH) {
                 //If done is the first word the user entered then terminate
@@ -142,12 +166,11 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                     parameters[indexArrayOfArgsLine] = strdup(argsLine);
                     indexArrayOfArgsLine++;
                     wordCount++;
-
                     getwordFnResult = 4;    //Done is not the first word and is just treated as a regular word
                 }
             }
             
-            //If word is not "done" but getwordFnResult is -1 then break
+            //If word is not "done" but getwordFnResult is -1 then terminate program
             else if (wordCount == EMPTY) {
                 breakoutParseFn = TERMINATED;
                 break;
@@ -158,27 +181,23 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
     }
-    //If the path to change directory cannot be found then print an error
     if (breakoutParseFn == TERMINATED) {
         return TERMINATED;
     }
-    //*****************************************************************************************************//
+    //**********************************END OF TOKENIZATION*************************************************//
     
     
     //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
 
-    //This block analyzes if the last character inputted is an ampersand '&'
+    //This block analyzes if the last character inputted is an ampersand '&' and sets the flag if it is
     int lastIndex = indexArrayOfArgsLine - 1;   //Offset from 0 as start array
-    if (parameters[lastIndex] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
-        
-        if ((strcmp(parameters[lastIndex], "&") == MATCH)) {
+    if (arrayOfArgsLine[lastIndex] != NULL) {
+        if ((strcmp(arrayOfArgsLine[lastIndex], "&") == MATCH)) {
             if (indexArrayOfArgsLine > 1) {
                 ampersandIsLastFlag = SET;
-                parameters[lastIndex] = NULL;   //Removes the & from parameters
-                //execCmd[execCmdIndex + 1] = NULL;   //TODO: CHECK IF THIS FIX IS OK
             }
             else if (indexArrayOfArgsLine == 1) {
-                return 0;   //Reissues prompt if & is just issued by itself
+                return EMPTY;   //Reissues prompt if & is just issued by itself
             }
         }
     }
@@ -188,7 +207,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     //commands such as "cd" and "done". If it is not a builtin command, then it will create the execCmd array
     //along with its parametersto be passed into execvp in main().
     //Builtins will return 0 and Executables will return 1
-    for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
+    for (loopIteration = EMPTY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
         //*******************************THIS SECTION HANDLES BUILTINS**************************************//
         //This block handles the 'cd' commands and uses chdir() to change the directory
@@ -214,15 +233,15 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                         }
                         chPath = strdup(parentDir);
                         
+                        
                     //All other paths will obtain whatever the user inputted after cd
-                    
                     } else if (wordCount > 2) {
                         fprintf(stderr, "%s", "Too many arguments.\n");
                         builtin_Flag = SET;
                         continue;
                     }
                     else {
-                        chPath = strdup(arrayOfArgsLine[directoryIndex]);  //specify chPath as the word after 'cd'
+                        chPath = strdup(arrayOfArgsLine[directoryIndex]);  //chPath is the word after 'cd'
                     }
 
                     //If chdirVal is 0 then chdir changed to chpath. Only checking for if it failed since
@@ -235,7 +254,6 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                     }
                 }
                 
-                //TODO: CHECK IF SETTING THE PARAMETERS ARRAY IS NEEDED
                 parameters[indexArrayOfArgsLine + 1] = NULL;
                 builtin_Flag = SET;
                 continue;
@@ -265,7 +283,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             } else if (inputRedirectionCharCount == 1) {
                 inputRedirectionFlag = SET;
                 //Checks if the filename after the ">" word exists
-                if (access(arrayOfArgsLine[loopIteration++], R_OK) != MATCH) {
+                if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
+                    loopIteration++;
                     fprintf(stderr, "%s", "File does not exist.\n");
                     builtin_Flag = SET;
                     continue;
@@ -284,10 +303,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 builtin_Flag = SET;
                 continue;
             }
-            //If the inputRedirectionFlag has already been set from a prior call then print an error
-            //printf("%s", arrayOfArgsLine[loopIteration]);
+            //If there are multiple outputs specified then print an error
                 if (outputRedirectionCharCount > 1) {
-                    //perror("Cannot have more than one output redirections\n"); //TODO: CHECK IF THIS IS THE RIGHT PLACE TO HAVE THE PERROR
                     fprintf(stderr, "%s", "Cannot output to multiple files.\n");
                     builtin_Flag = SET;
                     continue;
@@ -295,13 +312,12 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                     outputRedirectionFlag = SET;
 
                     //Removes metachar and everything afterwards so that it doesn't get passed into echo
-                    parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
+                    parameters[loopIteration] = NULL;
                     outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
                 }
                 continue;
         }
         
-        //TODO: Could probably combine the loops
         if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
             //If the output file is named ">" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
@@ -318,7 +334,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             } else if (outputAmpersandRedirectionCharCount == 1) {
                 outputRedirectionAmpersandFlag = SET;
                 //Removes metachar and everything afterwards so that it doesn't get passed into echo
-                parameters[loopIteration] = NULL;   //TODO: FIX THIS, DOESN'T FULLY SOLVE PROBLEMS
+                parameters[loopIteration] = NULL;
                 outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
             }
             continue;
@@ -350,14 +366,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
     }
 
-    //Returns 0 to main to rerun the prompt
+    //Returns to main() for a rerun of the prompt
     if (builtin_Flag == SET) {
         //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         return BUILTINS;
     }
 
-    //Returns 1 to main to create a fork
+    //Returns to main to create a fork
     //The parse function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
     //Sets the value after the last execCmd word to null to ensure proper parameters are passed to execvp
@@ -377,31 +393,33 @@ void signalHandler(int signal) {
 //**********************************************************************************************************//
 //**********************************THIS IS THE MAIN FUNCTION***********************************************//
 //**********************************************************************************************************//
-//See description of p2 above for description of how the main function works
 
+//Main handles the return value from parse(). A 0 will rerun the prompt and a 1 will create a fork and run
+//the executable. A -1 will terminate the program. Additionally, changing stdin and stdout as specified by
+//the filenames from the unix redirection is also changed by manipulating the file descriptors using the
+//open() and dup2(). 
 int main(int argc, char *argv[])
 {
     //****************************************DECLARATION OF LOCALS*****************************************//
     char argsLine[MAX_ARGS];
-    char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
+    char *previousCommandCall[MAX_ARGS] = {NULL};
     
     //Signal catcher
     setpgid(0,0);
     (void) signal(SIGTERM, signalHandler);
 
     //****************************THIS SECTION HANDLES PRE SENSING OF ARGV[1]*******************************//
-    //If the user inputs a "<" to specify a file, this would still run but not print out anything. If
-    //there was a perror as an else statement, then it would print the perror everytime. TODO: IS THIS ACCEPTABLE?
+    //If the user inputs a "<" to specify a file, this would still run but not print out anything.
     if (access(argv[1], R_OK) == ACCESS_OK) {
         
         //Returns the file descriptor value of the inputFileName value
         int cmdlineInputfd = open(argv[1], O_RDONLY);  //infd is short for input file descriptor
         if (cmdlineInputfd < 0) {
             perror("Access cmdline  error: ");
-            exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+            exit(1);
         }
         
-        //Sets the stdin to be the file that was specified in the cmdline
+        //Sets the stdin to be the file that was specified in the cmd line
         int cmdlineInputDup = dup2(cmdlineInputfd, fileno(stdin));
         if (cmdlineInputDup < 0) {
             perror("Input dup2 error:");
@@ -419,7 +437,7 @@ int main(int argc, char *argv[])
         char *outputFilename[1] = {NULL};
         printf("%%1%% ");
         fflush(stdout);
-        fflush(stdin);  //TODO: CHECK IF THIS IS THE RIGHT PLACE AND USAGE OF FFLUSH
+        fflush(stdin);
 
         inputRedirectionFlag = NOT_SET;
         outputRedirectionFlag = NOT_SET;
@@ -429,7 +447,8 @@ int main(int argc, char *argv[])
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
-        int parseResult = parse(arrayOfArgsLine, argsLine, parameters, inputFilename, outputFilename, previousCommandCall, execCmd);
+        int parseResult = parse(arrayOfArgsLine, argsLine, parameters, inputFilename, outputFilename,
+                                previousCommandCall, execCmd);
     
         if (parseResult == TERMINATED) {
             break;
@@ -456,13 +475,13 @@ int main(int argc, char *argv[])
                 if (inputRedirectionFlag == SET) {
                     
                     //Returns the file descriptor value of the inputFileName value
-                    int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
+                    int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);
                     if (inputfd < 0) {
                         //perror("Inputfd error: ");
                         exit(1);
                     }
                     
-                    int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
+                    int inputDup = dup2(inputfd, fileno(stdin));
                     if (inputDup < 0) {
                         //perror("Input dup2 error:");
                         exit(1);
@@ -480,13 +499,14 @@ int main(int argc, char *argv[])
                     }
                     
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
+                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC,
+                                        S_IRUSR, S_IWUSR);
                     if (outputfd < 0) {
                         //perror("Outputfd error");
                         exit(1);
                     }
                     
-                    int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
+                    int outputDup = dup2(outputfd, fileno(stdout));
                     if (outputDup < 0) {
                         //perror("Output dup2 error");
                         exit(1);
@@ -504,10 +524,12 @@ int main(int argc, char *argv[])
                     close (outputfd);
                 }
                 execvp (execCmd[FIRST_CMD], execCmd);
+                
                 //execvp will only return if it failed
                 perror("EXECVP FAILED");
                 exit(9);
             }
+            
             //THIS IS NOW THE PARENT PROCESS
             //If an ampersand is placed after a command (.e.g. echo hello &),
             //then print the parent PID and the command argument. In this example: (echo [pid])
@@ -520,6 +542,7 @@ int main(int argc, char *argv[])
             }
         }
     }
+    
     killpg(getpgrp(), SIGTERM);
     printf("p2 terminated.\n");
     exit(0);
