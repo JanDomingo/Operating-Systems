@@ -243,15 +243,15 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                     else {
                         chPath = strdup(arrayOfArgsLine[directoryIndex]);  //chPath is the word after 'cd'
                     }
-
-                    //If chdirVal is 0 then chdir changed to chpath. Only checking for if it failed since
-                    //chdirVal already changes the directory when intialized.
-                    int chdirVal = chdir(chPath);
-                    if (chdirVal == -1) {
-                        perror("chdir() failed.");
-                        builtin_Flag = SET;
-                        continue;
-                    }
+                }
+                
+                //If chdirVal is 0 then chdir changed to chpath. Only checking for if it failed since
+                //chdirVal already changes the directory when intialized.
+                int chdirVal = chdir(chPath);
+                if (chdirVal == -1) {
+                    perror("chdir() failed.");
+                    builtin_Flag = SET;
+                    continue;
                 }
                 
                 parameters[indexArrayOfArgsLine + 1] = NULL;
@@ -348,7 +348,6 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
             execCmdIndex++;
         }
-        
     }
     
     //*************THIS SECTION DETERMINES WHETHER TO RETURN A BUILTIN OR EXECUTABLE TO MAIN****************//
@@ -397,7 +396,7 @@ void signalHandler(int signal) {
 //Main handles the return value from parse(). A 0 will rerun the prompt and a 1 will create a fork and run
 //the executable. A -1 will terminate the program. Additionally, changing stdin and stdout as specified by
 //the filenames from the unix redirection is also changed by manipulating the file descriptors using the
-//open() and dup2(). 
+//open() and dup2().
 int main(int argc, char *argv[])
 {
     //****************************************DECLARATION OF LOCALS*****************************************//
@@ -496,6 +495,7 @@ int main(int argc, char *argv[])
                     if (fileExists == MATCH) {
                         fprintf(stderr, "%s", "Cannot overwrite existing files.\n");
                         exit(1);
+                        
                     }
                     
                     //Returns the file descriptor value of the inputFileName value
@@ -520,9 +520,9 @@ int main(int argc, char *argv[])
                             exit(1);
                         }
                     }
-                    
                     close (outputfd);
                 }
+                
                 execvp (execCmd[FIRST_CMD], execCmd);
                 
                 //execvp will only return if it failed
@@ -536,6 +536,13 @@ int main(int argc, char *argv[])
             if (ampersandIsLastFlag == SET) {
                 //Background jobs do not wait for child
                 printf("%s [%d]\n", execCmd[FIRST_CMD], pid);
+                
+                //Redirects the child input to dev/null and ensures background jobs cannot read from terminal
+                int devnullpd = open("/dev/null", O_WRONLY);
+                if (devnullpd < 0) exit(1);
+                int devnulldup2 = dup2(devnullpd, fileno(stdin));
+                if (devnulldup2 < 0) exit(1);
+                
             } else {
                 //Non-backgrounded jobs wait for child
                 wait(NULL);
