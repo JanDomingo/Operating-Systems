@@ -71,10 +71,9 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     int inputRedirectionCharCount = EMPTY;
     int outputRedirectionCharCount = EMPTY;
     int outputAmpersandRedirectionCharCount = EMPTY;
-    
     int builtin_Flag = EMPTY;    //Determines if the parse function will return a 0
-    
     int printCount = EMPTY;     //Prints only one "Ambiguous input redirect" error message
+    int bangbangFlag = EMPTY;
     
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
     //When getword(argsLine) is ran, it points to the word it is currently evalutaing and returns and int
@@ -90,6 +89,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             memcpy(parameters, previousCommandCall, MAX_ARGS);
             indexArrayOfArgsLine = previousCmdCallSize;
             wordCount = previousCmdCallSize;
+            bangbangFlag = SET;
             //indexArrayOfArgsLine = previousCmdCallSize;
             //wordCount = previousCmdCallSize;
             break;
@@ -103,22 +103,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             
             //Maximum word that can be copied. Prevents buffer overflow
-            //TODO: CHECK IF THIS IS NEEDED??????????????????????????????????
-            if (getwordFnResult == 254) {
-                char maxWord[MAX_ARGS + 1] = {EMPTY};
-                strcpy(maxWord, argsLine);
-                arrayOfArgsLine[indexArrayOfArgsLine] = strdup(maxWord);
-                parameters[indexArrayOfArgsLine] = strdup(maxWord);
-            } else {
+
                 arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
                 parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
-            }
                 indexArrayOfArgsLine++;
                 wordCount++;
                 previousCmdCallSize = indexArrayOfArgsLine;
             
-            
-
             if ((strcmp(argsLine, "<") == MATCH)) {
                 inputRedirectionCharCount++;
             }
@@ -206,7 +197,7 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
         //*******************************THIS SECTION HANDLES BUILTINS**************************************//
         //This block handles the 'cd' commands and uses chdir() to change the directory
         if ((strcmp(arrayOfArgsLine[FIRST_CMD], "echo") != MATCH)) {
-            if ((strcmp(arrayOfArgsLine[loopIteration], "cd")) == MATCH) {
+            if (strcmp(arrayOfArgsLine[loopIteration], "cd") == MATCH) {
                 //Saves the directory path to change into
                 char *chPath = {NULL};  //chPath is shortened for change path
                 
@@ -375,9 +366,13 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
             }
             pwd_Print = SET;
         }
-        //Exec cmd index working properly for echo, but not for cd. cd does not use this.
-        execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
-        execCmdIndex++;
+        
+        //execCmd only gets passed in if it is an executable
+        if (builtin_Flag != SET) {
+            execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
+            execCmdIndex++;
+        }
+        
     }
     
     //This section starts to return to main based on the return type
@@ -389,14 +384,14 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
                 execCmd[execCmdIndex - 1 ] = NULL;   //TODO: CHECK IF THIS FIX IS OK
             }
             else if (indexArrayOfArgsLine == 1) {
-                return BUILTINS;   //Reissues prompt if & is just issued by itself
+                return EMPTY;   //Reissues prompt if & is just issued by itself
             }
         }
     }
 
     if (builtin_Flag == SET) {
         //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
-        memcpy(previousCommandCall, execCmd, MAX_ARGS);
+        memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         return BUILTINS;
     }
     //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
@@ -411,8 +406,10 @@ int parse(char *argsLine, char *parameters[], char *inputFilename[], char *outpu
     return EXECUTABLE;
 }
 
+
+//*************************THIS FUNCTION INITIALIZES THE SIGTERM WHEN PASSED IN*****************************//
 void signalHandler(int signal) {
-    
+    //Intentionally empty
 }
 
 
@@ -427,6 +424,7 @@ int main(int argc, char *argv[])
     char argsLine[MAX_ARGS];
     char *previousCommandCall[MAX_ARGS] = {NULL};  //Saves the parameters from the previous call and executes if '!!' is called
     
+    //Signal catcher
     setpgid(0,0);
     (void) signal(SIGTERM, signalHandler);
 
@@ -451,10 +449,6 @@ int main(int argc, char *argv[])
         close (cmdlineInputfd);
     }
     
-    //*********************************THIS SECTION CREATES SIGNALS*****************************************//
-    
-    
-    
     //************************THIS LOOP PROMPTS THE USER UNTIL EOF/TERMINATION******************************//
     for(;;) {
         char *parameters[MAX_ARGS] = {NULL};    //parameters will hold tokenized user input into an array
@@ -475,11 +469,6 @@ int main(int argc, char *argv[])
         //parameters is an array of pointers to char with each element being a word from the cmd line input
         int parseResult = parse(argsLine, parameters, inputFilename, outputFilename, previousCommandCall, execCmd);
     
- 
-        
-        //If !! is not called, then save the current parameters into previousCommandCall
-        //If !! is called then previousCommandCall will be passed into execvp
-
         if (parseResult == TERMINATED) {
             break;
         }
