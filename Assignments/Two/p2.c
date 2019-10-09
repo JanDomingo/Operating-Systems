@@ -72,7 +72,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     int outputAmpersandRedirectionCharCount = EMPTY;
     
     int builtin_Flag = EMPTY;    //Determines if the parse function will return a 0
-    int printCount = EMPTY;     //Prints only one "Ambiguous input redirect" error message
+    int printErr = EMPTY;       //Prints only one "Ambiguous input redirect" error message
     
     
     //**********************THIS LOOP HANDLES TOKENIZATION INTO THE PARAMETERS ARRAY************************//
@@ -100,17 +100,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             break;
         }
         
-        //If the user inputted words, store into arrayOfArgsLine
         if (getwordFnResult > EMPTY) {
-            if ((strcmp(argsLine, "\\") == MATCH)) {    //TODO: FIX THIS NOT WORKING, NOT SURE IF THIS IS EVEN NEEDED
-                arrayOfArgsLine[indexArrayOfArgsLine] = EMPTY;   //Prevents "\" from passing into program
-                continue;
-            }
-            
-            //Maximum word that can be copied. Prevents buffer overflow
-
+                //Copies the word buffer created from getword() and into arrays
                 arrayOfArgsLine[indexArrayOfArgsLine] = strdup(argsLine);
-                parameters[indexArrayOfArgsLine] = strdup(argsLine); //Each element of this array is a word of the command line input. This provides a reference to main()
+                parameters[indexArrayOfArgsLine] = strdup(argsLine);
                 indexArrayOfArgsLine++;
                 wordCount++;
                 previousCmdCallSize = indexArrayOfArgsLine;
@@ -190,14 +183,13 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
     }
     
-    //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
-    //previousCmdCallSize = indexArrayOfArgsLine;
-    
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
-    //This for loop iterates through arrayOfArgsLine and sets global flags
+    //This for loop iterates through arrayOfArgsLine and sets global flags as well as perform builtin
+    //commands such as "cd" and "done". If it is not a builtin command, then it will create the execCmd array
+    //along with its parametersto be passed into execvp in main().
     //Builtins will return 0 and Executables will return 1
-    //TODO: IS A WHILE(1) LOOP MORE SUITABLE FOR THIS SCENARIO?
     for (loopIteration = START_OF_ARRAY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
+        
         //*******************************THIS SECTION HANDLES BUILTINS**************************************//
         //This block handles the 'cd' commands and uses chdir() to change the directory
         if ((strcmp(arrayOfArgsLine[FIRST_CMD], "echo") != MATCH)) {
@@ -222,9 +214,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                         }
                         chPath = strdup(parentDir);
                         
-                    //All other paths will obtain whatever th e user inputted after cd
-                    //TODO: TEMPORARY FIX FOR THE WORDCOUNT
-                        
+                    //All other paths will obtain whatever the user inputted after cd
+                    
                     } else if (wordCount > 2) {
                         fprintf(stderr, "%s", "Too many arguments.\n");
                         builtin_Flag = SET;
@@ -251,20 +242,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
         
-        //This block handles the '!!' bang bang command and sets the parameters to execute as the previous
-        //command
-        /*
-        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "!!")) == MATCH) {
-            memcpy(execCmd, previousCommandCall, MAX_ARGS);
-            memcpy(previousCommandCall, execCmd, MAX_ARGS);
-            return EXECUTABLE;
-        }
-         */
-        
         //**********************THIS SECTION SETS INPUT/OUTPUT REDIRECTION FLAGS****************************//
-        //This block handles the case of the metacharacter '<'. If detected, SET the inputRedirectionFlag
-        //TODO: CHECK INPUT7 OR INPUT8 FOR FURTHER TEST CASES OF UNIX REDIRECTION
-        //TODO: WORK IN PROGRESS
+        //This block handles the case of the metacharacter "<". If detected, SET the inputRedirectionFlag
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
             //If the input file is named ">" then do not copy into the input file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
@@ -273,30 +252,27 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 continue;
             }
             
+            //The user cannot have multiple ">" input redirections
             if (inputRedirectionCharCount > 1) {
-                //perror("Cannot have more than one input redirections");
-
-                if (printCount == 0) {
+                if (printErr == NOT_SET) {
                     fprintf(stderr, "%s", "Ambiguous input redirect.\n");
-                    printCount = 1;
+                    printErr = SET;
                 }
                 builtin_Flag = SET;
                 continue;
-            } else if (inputRedirectionCharCount == 1) {
                 
+            //If there is only one "<" inputfile as intended:
+            } else if (inputRedirectionCharCount == 1) {
                 inputRedirectionFlag = SET;
-                //If the file trying to input does not exist, then
-                if (access(arrayOfArgsLine[loopIteration + 1], R_OK) != MATCH) {
-                    //inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
-                    loopIteration++;    //TODO: CHECK IF THIS LOOPITERATION++ NEEDS TO BE PLACED ELSEWHERE
+                //Checks if the filename after the ">" word exists
+                if (access(arrayOfArgsLine[loopIteration++], R_OK) != MATCH) {
                     fprintf(stderr, "%s", "File does not exist.\n");
                     builtin_Flag = SET;
                     continue;
                 }
                 
-                //Saves the word after the '<' symbol into the inputFileName character array
-                //TODO: ++loopIteration causing segmentation fault on input10
-                inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);    //TODO: USING LOOPITERATION++ WILL CAUSE A THREAD ERROR IF A FILE AFTER THE > OR < or >& SIGN DOES NOT EXIST. MAYBE IMPLEMENT ACCESS FUNCTION TO CHECK FIRST BEFORE STRDUP?
+                //Saves the filename into inputFilename if the file exists
+                inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
             }
             continue;
         }
@@ -350,26 +326,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         
     
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
-        //TODO: FIGURE OUT IF THIS SECTION IS NECESSARY SINCE EXECUTABLES ARE ALREADY IN THE PARAMETERS ARRAY
-        //This block handles the case of "echo" and "ls" commands
-        /*
-        if ((strcmp(arrayOfArgsLine[loopIteration], "echo") == MATCH) ||
-            (strcmp(arrayOfArgsLine[loopIteration], "ls")) == MATCH) {
-            //strcpy(command, arrayOfArgsLine[loopIteration]);
-            //parameters[indexArrayOfArgsLine + 1] = strdup(argsLine);
-            //break;
-        }*/
-        
-        //This block handles the "pwd" command
-        //TODO: CHECK IF THE PWD_PRINT STATIC INT IS NECESSARY
-        static int pwd_Print = NOT_SET;
-        if ((strcmp(arrayOfArgsLine[FIRST_CMD], "pwd")) == MATCH) {
-            if (pwd_Print == NOT_SET) {
-            }
-            pwd_Print = SET;
-        }
-        
-        //execCmd only gets passed in if it is an executable
+        //If the program made it this far then the word is an executable
+        //execCmd is a secondary array and stores only executables and its parameters
         if (builtin_Flag != SET) {
             execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
             execCmdIndex++;
@@ -377,13 +335,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         
     }
     
-    //This section starts to return to main based on the return type
-    //Removes the '&' from execCmd index so it does not get passed into execvp
+    //*************THIS SECTION DETERMINES WHETHER TO RETURN A BUILTIN OR EXECUTABLE TO MAIN****************//
+    
+    //This block handles the ampersandIsLastFlag
     if (execCmd[execCmdIndex - 1] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
         if ((strcmp(execCmd[execCmdIndex - 1], "&") == MATCH)) {
             if (indexArrayOfArgsLine > 1) {
                 ampersandIsLastFlag = SET;
-                execCmd[execCmdIndex - 1 ] = NULL;   //TODO: CHECK IF THIS FIX IS OK
+                execCmd[execCmdIndex - 1 ] = NULL;   //Deletes the '&' so it doesn't pass into execvp
             }
             else if (indexArrayOfArgsLine == 1) {
                 return EMPTY;   //Reissues prompt if & is just issued by itself
@@ -391,18 +350,18 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
     }
 
+    //Returns 0 to main to rerun the prompt
     if (builtin_Flag == SET) {
         //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         return BUILTINS;
     }
-    //Sets parameter of the index after the last word to NULL to ensure proper parameters to execvp
-    parameters[indexArrayOfArgsLine + 1] = NULL;    //TODO: CHECK IF + 1 IS STILL NEEDED HERE DUE TO THE IMPLEMENETATION OF LOOPITERATION++
-    execCmd[execCmdIndex + 1] = NULL;               //TODO: CHECK IF + 1 IS STILL NEEDED HERE DUE TO THE IMPLEMENETATION OF LOOPITERATION++
-    
 
-    //This function defaults to a return value of 1.
+    //Returns 1 to main to create a fork
+    //The parse function defaults to a return value of 1.
     //If the command is not a builtin or EOF then it runs as an executable
+    //Sets the value after the last execCmd word to null to ensure proper parameters are passed to execvp
+    execCmd[execCmdIndex + 1] = NULL;
     memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
     previousCmdCallSize = indexArrayOfArgsLine;
     return EXECUTABLE;
@@ -496,18 +455,11 @@ int main(int argc, char *argv[])
                                 
                 if (inputRedirectionFlag == SET) {
                     
-                    //Cannot find file to read in
-                    /*
-                    int fileExists = access(inputFilename[0], R_OK);
-                    if (fileExists < 0) {
-                        perror("Access input error:");
-                    }*/
-                    
                     //Returns the file descriptor value of the inputFileName value
                     int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);  //infd is short for input file descriptor
                     if (inputfd < 0) {
                         //perror("Inputfd error: ");
-                        exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+                        exit(1);
                     }
                     
                     int inputDup = dup2(inputfd, fileno(stdin));   //Changes the stdin to the inputFileName file
@@ -520,9 +472,6 @@ int main(int argc, char *argv[])
                 
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                                        
-                    //TODO: DOUBLE CHECK INPUT 99: ONLY NEED TO WORK ON LAST LINE FOR THIS TEST
-
-                    
                     //If a file already exists then cannot overwrite an existing file
                     int fileExists = access(outputFilename[FIRST_CMD], R_OK);
                     if (fileExists == MATCH) {
@@ -534,7 +483,7 @@ int main(int argc, char *argv[])
                     int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
                     if (outputfd < 0) {
                         //perror("Outputfd error");
-                        exit(1);    //TODO: FIGURE OUT WHICH ERROR CODES ARE THE PROPER ONES TO USE
+                        exit(1);
                     }
                     
                     int outputDup = dup2(outputfd, fileno(stdout));   //Changes the stdout to the output filename
@@ -552,8 +501,6 @@ int main(int argc, char *argv[])
                         }
                     }
                     
-
-            
                     close (outputfd);
                 }
                 execvp (execCmd[FIRST_CMD], execCmd);
