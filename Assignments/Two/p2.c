@@ -83,6 +83,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         
         getwordFnResult = getword(argsLine);
         
+        //************************THIS SECTION HANDLES THE !! Bang Bang Character***************************//
         if ((wordCount == 0) && (strcmp(argsLine, "!!") == MATCH)) {
             //If "!!" is the first word then set the stdin as the array of previous comands
             memcpy(arrayOfArgsLine, previousCommandCall, MAX_ARGS);
@@ -91,6 +92,11 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             wordCount = previousCmdCallSize;
             //indexArrayOfArgsLine = previousCmdCallSize;
             //wordCount = previousCmdCallSize;
+            
+            //Exhausts the input stream as any characters after '!!' are ignored
+            while(getwordFnResult != 0) {
+                getwordFnResult = getword(argsLine);
+            }
             break;
         }
         
@@ -480,7 +486,6 @@ int main(int argc, char *argv[])
         if (parseResult == EXECUTABLE) {
             pid_t pid = fork();
             
-            //printf("PID PID: %d\n", pid);
             if (pid == FORK_FAILED) {
                 perror("Fork Failed");
                 exit(1);
