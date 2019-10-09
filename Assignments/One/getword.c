@@ -158,23 +158,32 @@ int getword(char *w)
         //is then retrieved to continue checking the program.
         if (iochar == '\\') {
             iochar = getchar();
+            
             if (iochar == EOF)      //EOF is handled at the end of the program and so the program exits to go
                 break;              //to the corresponding EOF handler
             if (iochar == NEWLINE) {
                 ungetc(iochar,stdin);   //Pushes back newline to input stream for rerun
                 continue;               //Skips current block, continues to NEWLINE check
             }
+            
             wordSize++;
             *w = iochar;            //Populates the w string array element with characters
             w++;                    //Increments the pointer to populate the next element of the string array
-            iochar = getchar();
-            if (iochar == EOF)
+            if (iochar == EOF) {
                 break;
+            } else
+                continue;           //Gets the next iochar in the while loop
 
         }
+        
+        /*************THIS SECTION CHECKS IF THE CHARACTER IS A BACKSLASH AGAIN (e.g. \|\|) ********************/
+        
+        
+        
+        
 
         /*********************THIS SECTION CHECKS IF THE CHARACTER IS A META CHARACTER***********************/
-        //If the character is a meta character and there is a current word, then return the current wordsie
+        //If the character is a meta character and there is a current word, then return the current wordsize
         //and ungetc will restore the stdin stream to the metachar for the next run
         if (metaCharacterCheck(iochar) == IS_META) {
             if (wordSize > EMPTY) {
