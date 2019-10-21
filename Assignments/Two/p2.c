@@ -45,8 +45,7 @@
 #include <unistd.h>         //dup2(), execvp(), chdir(), fork(), access(), setpgid(), getpgrp()
 #include <fcntl.h>          //open()
 #include <sys/wait.h>       //wait()
-#include <sys/stat.h>       //stat()
-#include <errno.h>
+#include <sys/stat.h>       //stat() -- NOT USED
 #include "getword.h"
 
 #define MAX_ARGS 254
@@ -65,16 +64,12 @@
 #define SET 1
 #define EXECUTABLE 1
 
-
-
 //Global Variables
 int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAmpersandFlag = NOT_SET;
 int previousCmdCallSize;
-
-
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
@@ -382,12 +377,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     return EXECUTABLE;
 }
 
-
 //*************************THIS FUNCTION INITIALIZES THE SIGTERM WHEN PASSED IN*****************************//
 void signalHandler(int signal) {
     //Intentionally empty. This only handles SIGTERM for now.
 }
-
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE MAIN FUNCTION***********************************************//
@@ -538,12 +531,13 @@ int main(int argc, char *argv[])
                 //Background jobs do not wait for child
                 printf("%s [%d]\n", execCmd[FIRST_CMD], pid);
                 
-                //Redirects the child input to dev/null and ensures background jobs cannot read from terminal
-                //int devnullpd = open("/dev/null", O_RDWR);
-                //if (devnullpd < 0) exit(1);
-                //int devnulldup2 = dup2(devnullpd, fileno(stdin));
-                //if (devnulldup2 < 0) exit(1);
-                //close(devnullpd);
+                //If there is no filename specified for the input then redirect the child input to dev/null
+                //and ensures background jobs cannot read from terminal
+                if (inputRedirectionFlag == NOT_SET) {
+                    int devnullpd = open("/dev/null", O_RDONLY);
+                    if (devnullpd < 0) exit(1);
+                   close(devnullpd);
+                }
 
             } else {
                 //Non-backgrounded jobs wait for child
