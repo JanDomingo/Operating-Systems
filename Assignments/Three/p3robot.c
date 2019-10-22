@@ -43,7 +43,7 @@ int nrRobots = -1; /* number of robots */
 int quota = -1; /* number of widgets each widget builder is to make */
 int seed = -1;  /* random number initializer */
 
-int mainChange(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   int i; /* loop counter */
   sem_t *done; /* semaphore used by main to wait till everyone done */
   char semaphoreName[SEMNAMESIZE];

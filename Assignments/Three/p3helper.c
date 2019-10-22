@@ -38,10 +38,24 @@ extern int nrRobots;
 extern int quota;
 extern int seed;
 
+sem_t *mutex;   /* semaphore guarding access to shared data */
+
+char semaphoreMutx[SEMNAMESIZE];
+
 /* General documentation for the following functions is in p3.h
    Here you supply the code, and internal documentation:
    */
 void initStudentStuff(void) {
+    
+    //Stores semaphore name as "/570[uid]mutx" into semaphoreMutx
+    sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
+    
+    //Create and initalize the semaphore
+    if ((mutex = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR, 1)) != SEM_FAILED) {
+        printf("SEMAPHORE NAME: %s, \n", semaphoreMutx);
+        sem_unlink(semaphoreMutx);
+    }
+    
 }
 
 /* In this braindamaged version of placeWidget, the widget builders don't
