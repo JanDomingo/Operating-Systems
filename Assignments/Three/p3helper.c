@@ -47,25 +47,37 @@ int count;
    */
 void initStudentStuff(void) {
     
+
+    
     //Initialize the name of the semaphore
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
-    printf("PRINT HERE\n");
+    
+    CHK(sem_unlink(semaphoreMutx)); //TODO: DELETE THIS WHEN FINISHED
     
     //Initalizes the semaphore and if successful then locks it. Mutex controls access to countfile creation
     if ((pmutx = sem_open(semaphoreMutx,O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR,1)) != SEM_FAILED) {
         
         /*Request access to the critical region*/
         CHK(sem_wait(pmutx));   //First process to get here will decrement and lock the mutex
-        
         //Create and initialize the count file
         CHK(fd = open("countfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
         count = 0;
         CHK(lseek(fd,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
         assert(sizeof(count) == write(fd, &count, sizeof(count)));
         
+        //printf("COUNTFILE CREATED\n");    //TODO: DELETE THIS WHEN FINISHED
+        
         /* Release critical section */
         CHK(sem_post(pmutx));
         
+        //printf("OUTSIDE CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
+        
+    } else {
+        //Initialize the other processes to operate on the same semaphore
+        
+        CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
+        printf("TWO");
+        //CHK(fd = open("countfile", O_RDWR)); CHECK IF THIS LINE IS NEEDED
     }
     
 }
@@ -74,9 +86,29 @@ void initStudentStuff(void) {
    coordinate at all, and merely print a random pattern. You should replace
    this code with something that fully follows the p3 specification. */
 void placeWidget(int n) {
-  printeger(n);
-  printf("N\n");
-  fflush(stdout);
+    
+    /*Request access to the critical region*/
+    CHK(sem_wait(pmutx));   //Only one process can write and print out at a time
+    CHK(fd = open("countfile", O_RDWR));
+    CHK(lseek(fd,0,SEEK_SET));
+    assert(sizeof(count) == write(fd, &count, sizeof(count)));
+    count++;    //Keeps track of how many processes have been printed out already
+    
+    if ((nrRobots * quota) == count) {
+        
+        printf("LAST ONE\n");
+        CHK(close(fd));
+        CHK(unlink("countfile"));
+        CHK(sem_unlink(semaphoreMutx));
+        CHK(sem_close(pmutx));
+    }
+    
+    
+    printeger(n);
+    printf("N\n");
+    fflush(stdout);
+    
+    CHK(sem_post(pmutx));
 }
 
 /* If you feel the need to create any additional functions, please
