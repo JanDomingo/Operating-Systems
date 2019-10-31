@@ -47,66 +47,70 @@ int count;
    */
 void initStudentStuff(void) {
     
-
-    
     //Initialize the name of the semaphore
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
     
-    CHK(sem_unlink(semaphoreMutx)); //TODO: DELETE THIS WHEN FINISHED
+    //CHK(sem_unlink(semaphoreMutx)); //TODO: DELETE THIS WHEN FINISHED
     
     //Initalizes the semaphore and if successful then locks it. Mutex controls access to countfile creation
-    if ((pmutx = sem_open(semaphoreMutx,O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR,1)) != SEM_FAILED) {
+    //so that only one countfile is created. First process to reach this will initialize the countifle.
+    if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR, 1)) != SEM_FAILED) {
         
-        /*Request access to the critical region*/
-        CHK(sem_wait(pmutx));   //First process to get here will decrement and lock the mutex
         //Create and initialize the count file
         CHK(fd = open("countfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
         count = 0;
+        
+        printf("ENTERING CRITICAL REGION\n");
+        
+        /*Request access to the critical region*/
+        //CHK(sem_wait(pmutx));   //Locks the critical region so that other processes can't print yet
+        
         CHK(lseek(fd,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
         assert(sizeof(count) == write(fd, &count, sizeof(count)));
         
-        //printf("COUNTFILE CREATED\n");    //TODO: DELETE THIS WHEN FINISHED
+        printf("PID: %d COUNTFILE CREATED\n", getpid());    //TODO: DELETE THIS WHEN FINISHED
         
         /* Release critical section */
         CHK(sem_post(pmutx));
         
-        //printf("OUTSIDE CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
+        printf("EXITING CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
         
     } else {
-        //Initialize the other processes to operate on the same semaphore
         
+        //Initialize the other processes to operate on the same semaphore
         CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
-        printf("TWO");
+        printf("ELSE\n");     //TODO: DELETE THIS WHEN FINISHED
         //CHK(fd = open("countfile", O_RDWR)); CHECK IF THIS LINE IS NEEDED
+        
     }
-    
 }
 
 /* In this braindamaged version of placeWidget, the widget builders don't
    coordinate at all, and merely print a random pattern. You should replace
    this code with something that fully follows the p3 specification. */
 void placeWidget(int n) {
-    
     /*Request access to the critical region*/
     CHK(sem_wait(pmutx));   //Only one process can write and print out at a time
+    
     CHK(fd = open("countfile", O_RDWR));
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == write(fd, &count, sizeof(count)));
     count++;    //Keeps track of how many processes have been printed out already
     
-    if ((nrRobots * quota) == count) {
-        
-        printf("LAST ONE\n");
+    
+    if (count == 5) {
+        printf("F\n");
         CHK(close(fd));
         CHK(unlink("countfile"));
         CHK(sem_unlink(semaphoreMutx));
         CHK(sem_close(pmutx));
+        
+    } else {
+        printf("COUNT: %d\n", count);
+        printeger(n);
+        printf("N\n");
+        fflush(stdout);
     }
-    
-    
-    printeger(n);
-    printf("N\n");
-    fflush(stdout);
     
     CHK(sem_post(pmutx));
 }
