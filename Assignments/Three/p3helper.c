@@ -33,21 +33,30 @@
    about the job (for details see the assignment and the documentation
    in p3robot.c):
      */
+
+#define TRIGGERED 1
+#define NOT_TRIGGERED 0
+
 extern int nrRobots;
 extern int quota;
 extern int seed;
+static int rowPrint = 1;
+static int printCount = 0;
+static int maxPeakHit = 0;
 
 char semaphoreMutx[SEMNAMESIZE];    //Name of sempahore
 sem_t *pmutx;                       //Semaphore descriptor value
 int fd;                             //countfile descriptor
+int fdrp;                           //rowPrint file descriptor
+int fdpc;                           //printCount file descriptor
+int fdmph;                          //maxPeakHit file descriptor
 int count;
 
 /* General documentation for the following functions is in p3.h
    Here you supply the code, and internal documentation:
    */
 void initStudentStuff(void) {
-    
-    
+
     //Initialize the name of the semaphore
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
     
@@ -55,37 +64,42 @@ void initStudentStuff(void) {
     
     //Initalizes the semaphore and if successful then locks it. Mutex controls access to countfile creation
     //so that only one countfile is created. First process to reach this will initialize the countifle.
-    if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 1)) == SEM_FAILED) {
+    if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 1)) != SEM_FAILED) {
         
-        //Program goes into here when the previous semaphore name was not unlinked
-        //Initialize the other processes to operate on the same semaphore
-        CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
-        CHK(fd = open("countfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
-        printf("ELSE DID NOT INITIALIZE COUNT FILE\n");     //TODO: DELETE THIS WHEN FINISHED
-        
-    } else {
+        /*Request access to the critical region*/
+        CHK(sem_wait(pmutx));   //Locks the critical region so that other processes can't print yet
         
         //Create and initialize the count file
         CHK(fd = open("countfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
+
+        
         count = 0;
+        rowPrint = 1;
+        printCount = 0;
+        maxPeakHit = 0;
         
         printf("SEMAPHORE NAME %s\n", semaphoreMutx);
         printf("ENTERING CRITICAL REGION\n");
         
-        /*Request access to the critical region*/
-        //CHK(sem_wait(pmutx));   //Locks the critical region so that other processes can't print yet
-        
-        CHK(sem_wait(pmutx));
-        
         CHK(lseek(fd,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
         assert(sizeof(count) == write(fd, &count, sizeof(count)));
         
-        printf("PID: %d COUNTFILE CREATED\n", getpid());    //TODO: DELETE THIS WHEN FINISHED
+
+        
+        //printf("PID: %d COUNTFILE CREATED\n", getpid());    //TODO: DELETE THIS WHEN FINISHED
         
         /* Release critical section */
         CHK(sem_post(pmutx));
         
-        printf("EXITING CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
+        //printf("EXITING CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
+
+    } else {
+        //Program goes into here when the previous semaphore name was not unlinked
+        //Initialize the other processes to operate on the same semaphore
+        CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
+        CHK(fd = open("countfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
+
+        //printf("ELSE DID NOT INITIALIZE COUNT FILE\n");     //TODO: DELETE THIS WHEN FINISHED
     }
 }
 
@@ -102,27 +116,53 @@ void placeWidget(int n) {
     //CHK(fd = open("countfile", O_RDWR));
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == read(fd, &count, sizeof(count)));
+    
     count++;    //Keeps track of how many processes have been printed out already
     
     
+    
+    //Closes and unlinks the semaphore and countfile if the last robot placed the widget
     if (count == (nrRobots * quota)) {
-        printf("COUNT: %d\n", count);
+        //printf("COUNT: %d\n", count); //TODO: DELETE THIS WHEN FINISHED
         printeger(n);
         printf("F\n");
         CHK(close(fd));
+
         CHK(unlink("countfile"));
         CHK(sem_close(pmutx));
         CHK(sem_unlink(semaphoreMutx));
         
     } else {
-        printf("COUNT: %d\n", count);
-        printeger(n);
-        printf("N\n");
-        fflush(stdout);
+        int i;
+        for (i = 1; i <= rowPrint; i++) {
+            printeger(n);
+            printCount++;
+            if (i == rowPrint) {
+                printf("N\n");
+            }
+        }
         
-        CHK(lseek(fd, 0, SEEK_SET));
+        if (printCount > (count / 2)) {
+            //Max peak on triangle, start decerementing rowPrint
+            maxPeakHit = TRIGGERED;
+        }
+        
+        if (maxPeakHit == NOT_TRIGGERED) {
+            rowPrint++;
+        } else if (maxPeakHit == TRIGGERED){
+            rowPrint--;
+        }
+        
+        //printf("COUNT: %d\n", count);
+        //printeger(n);
+        //printf("N\n");
+        fflush(stdout);
+
+        CHK(lseek(fd, 0, SEEK_SET));    //Write the new incremented count value to the countfile
         assert(sizeof(count) == write(fd, &count, sizeof(count)));
-        CHK(sem_post(pmutx));
+        
+        
+        CHK(sem_post(pmutx));   //Exits the critical region to allow other process to place widget
     }
     
 
