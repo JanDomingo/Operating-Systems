@@ -96,7 +96,7 @@ void placeWidget(int n) {
     /*Request access to the critical region*/
     CHK(sem_wait(pmutx));   //Only one process can write and print out at a time
     
-    sleep(random()%2);  //TODO: DELETE THIS WHEN FINISHED
+    //sleep(random()%2);  //TODO: DELETE THIS WHEN FINISHED
     
     //Opens the count file and reads the current amount of count
     //CHK(fd = open("countfile", O_RDWR));
@@ -106,23 +106,26 @@ void placeWidget(int n) {
     
     
     if (count == (nrRobots * quota)) {
+        printf("COUNT: %d\n", count);
+        printeger(n);
         printf("F\n");
         CHK(close(fd));
         CHK(unlink("countfile"));
         CHK(sem_close(pmutx));
         CHK(sem_unlink(semaphoreMutx));
-        exit(0);
         
     } else {
         printf("COUNT: %d\n", count);
         printeger(n);
         printf("N\n");
         fflush(stdout);
+        
+        CHK(lseek(fd, 0, SEEK_SET));
+        assert(sizeof(count) == write(fd, &count, sizeof(count)));
+        CHK(sem_post(pmutx));
     }
     
-    CHK(lseek(fd, 0, SEEK_SET));
-    assert(sizeof(count) == write(fd, &count, sizeof(count)));
-    CHK(sem_post(pmutx));
+
 }
 
 /* If you feel the need to create any additional functions, please
