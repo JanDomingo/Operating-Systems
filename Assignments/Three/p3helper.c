@@ -47,6 +47,7 @@ int count;
    */
 void initStudentStuff(void) {
     
+    
     //Initialize the name of the semaphore
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
     
@@ -54,16 +55,27 @@ void initStudentStuff(void) {
     
     //Initalizes the semaphore and if successful then locks it. Mutex controls access to countfile creation
     //so that only one countfile is created. First process to reach this will initialize the countifle.
-    if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR, 1)) != SEM_FAILED) {
+    if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 1)) == SEM_FAILED) {
+        
+        //Program goes into here when the previous semaphore name was not unlinked
+        //Initialize the other processes to operate on the same semaphore
+        CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
+        CHK(fd = open("countfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
+        printf("ELSE DID NOT INITIALIZE COUNT FILE\n");     //TODO: DELETE THIS WHEN FINISHED
+        
+    } else {
         
         //Create and initialize the count file
         CHK(fd = open("countfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
         count = 0;
         
+        printf("SEMAPHORE NAME %s\n", semaphoreMutx);
         printf("ENTERING CRITICAL REGION\n");
         
         /*Request access to the critical region*/
         //CHK(sem_wait(pmutx));   //Locks the critical region so that other processes can't print yet
+        
+        CHK(sem_wait(pmutx));
         
         CHK(lseek(fd,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
         assert(sizeof(count) == write(fd, &count, sizeof(count)));
@@ -74,14 +86,6 @@ void initStudentStuff(void) {
         CHK(sem_post(pmutx));
         
         printf("EXITING CRITICAL REGION\n");  //TODO: DELETE THIS WHEN FINISHED
-        
-    } else {
-        
-        //Initialize the other processes to operate on the same semaphore
-        CHK((int)(pmutx = sem_open(semaphoreMutx, O_RDWR)));
-        printf("ELSE\n");     //TODO: DELETE THIS WHEN FINISHED
-        //CHK(fd = open("countfile", O_RDWR)); CHECK IF THIS LINE IS NEEDED
-        
     }
 }
 
@@ -92,18 +96,22 @@ void placeWidget(int n) {
     /*Request access to the critical region*/
     CHK(sem_wait(pmutx));   //Only one process can write and print out at a time
     
-    CHK(fd = open("countfile", O_RDWR));
+    sleep(random()%2);  //TODO: DELETE THIS WHEN FINISHED
+    
+    //Opens the count file and reads the current amount of count
+    //CHK(fd = open("countfile", O_RDWR));
     CHK(lseek(fd,0,SEEK_SET));
-    assert(sizeof(count) == write(fd, &count, sizeof(count)));
+    assert(sizeof(count) == read(fd, &count, sizeof(count)));
     count++;    //Keeps track of how many processes have been printed out already
     
     
-    if (count == 5) {
+    if (count == (nrRobots * quota)) {
         printf("F\n");
         CHK(close(fd));
         CHK(unlink("countfile"));
-        CHK(sem_unlink(semaphoreMutx));
         CHK(sem_close(pmutx));
+        CHK(sem_unlink(semaphoreMutx));
+        exit(0);
         
     } else {
         printf("COUNT: %d\n", count);
@@ -112,6 +120,8 @@ void placeWidget(int n) {
         fflush(stdout);
     }
     
+    CHK(lseek(fd, 0, SEEK_SET));
+    assert(sizeof(count) == write(fd, &count, sizeof(count)));
     CHK(sem_post(pmutx));
 }
 
