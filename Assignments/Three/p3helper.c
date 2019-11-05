@@ -49,18 +49,18 @@ void initStudentStuff(void) {
          CHK(sem_post(pmutx));
 
      } else {
-         
          //If process gets here before countfile is initialized, then wait on semaphore to finish
          if (access("countfile", F_OK) == -1) {
              //if sem_wait is placed here then only once process will be printing out
              sleep(1);  //TODO: DELETE THIS WHEN PROGRAM IS FINISHED. FIND A WAY TO ELIMINATE RACE CONDITIONS
-             printf("NOT CREATED YET!!!");
+             //printf("NOT CREATED YET!!!");
              //CHK(fd = open("countfile", O_RDWR));
          }
          
-         printf("NOT INITIALIZER: %d\n", getpid());
-         pmutx = sem_open(semaphoreMutx, O_RDWR);
+         printf("NOT THE INITIALIZER: %d\n", getpid());
+         pmutx = sem_open(semaphoreMutx, O_RDWR, 1);
          CHK(fd = open("countfile", O_RDWR));
+         
 
      }
 }
@@ -78,20 +78,30 @@ void placeWidget(int n) {
         CHK(fd = open("countfile", O_RDWR));
     }
     
+    
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == read(fd, &count, sizeof(count)));
     count++;
     
     printf("COUNT: %d\n", count);
     
-    printeger(n);
-    printf("N\n");
-    
-    CHK(lseek(fd,0,SEEK_SET));
-    assert(sizeof(count) == write(fd, &count, sizeof(count)));
-    
-    fflush(stdout);
-    CHK(sem_post(pmutx));
+    if (count == (nrRobots * quota)) {
+        printeger(n);
+        printf("F\n");
+        CHK(close(fd));
+        CHK(unlink("countfile"));
+        CHK(sem_close(pmutx));
+        CHK(sem_unlink(semaphoreMutx));
+        
+    } else {
+        printeger(n);
+        printf("N\n");
+        
+        CHK(lseek(fd,0,SEEK_SET));
+        assert(sizeof(count) == write(fd, &count, sizeof(count)));
+        fflush(stdout);
+        CHK(sem_post(pmutx));
+    }
 }
 
 /* If you feel the need to create any additional functions, please
