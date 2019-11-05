@@ -39,30 +39,29 @@ void initStudentStuff(void) {
     
      if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 0)) != SEM_FAILED) {
          printf("SEMPAPHORE NAME: %s\n", semaphoreMutx);
-         printf("INITIALIZED: %d\n", getpid());
-         
+
          CHK(fd = open("countfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
          count = 0;
-         
          CHK(lseek(fd,0,SEEK_SET));
          assert(sizeof(count) == write(fd,&count,sizeof(count)));
          
+        printf("INITIALIZED: %d\n", getpid());
          CHK(sem_post(pmutx));
 
      } else {
          
-         //sem_wait(pmutx);
-         //while (access("countfile", F_OK) == -1) {
-             //sem_wait(pmutx);
-             //sleep(1);
-         //}
+         //If process gets here before countfile is initialized, then wait on semaphore to finish
+         if (access("countfile", F_OK) == -1) {
+             //if sem_wait is placed here then only once process will be printing out
+             sleep(1);  //TODO: DELETE THIS WHEN PROGRAM IS FINISHED. FIND A WAY TO ELIMINATE RACE CONDITIONS
+             printf("NOT CREATED YET!!!");
+             //CHK(fd = open("countfile", O_RDWR));
+         }
          
-         printf("NOT INITIALIZED: %d\n", getpid());
+         printf("NOT INITIALIZER: %d\n", getpid());
          pmutx = sem_open(semaphoreMutx, O_RDWR);
          CHK(fd = open("countfile", O_RDWR));
-         //sem_post(pmutx);
 
-         
      }
 }
 
@@ -72,6 +71,12 @@ void initStudentStuff(void) {
 void placeWidget(int n) {
     
     CHK(sem_wait(pmutx));
+    
+    //TODO: CHECK IF THIS BLOCK EVER HAPPENS
+    if (access("countfile", F_OK) == -1) {
+        printf("HHIIIIIIIIIIIII I DONT KNOW IF THIS BLOCK IS  SUPPOSED TO HAPPEN\n");
+        CHK(fd = open("countfile", O_RDWR));
+    }
     
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == read(fd, &count, sizeof(count)));
