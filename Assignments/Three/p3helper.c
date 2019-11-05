@@ -46,7 +46,7 @@ void initStudentStuff(void) {
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
     
      if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 0)) != SEM_FAILED) {
-         printf("SEMPAPHORE NAME: %s\n", semaphoreMutx);
+         //printf("SEMPAPHORE NAME: %s\n", semaphoreMutx);
 
          CHK(fd = open("countfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
          CHK(fd2 = open("rowprintfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
@@ -67,7 +67,7 @@ void initStudentStuff(void) {
          assert(sizeof(printcount) == write(fd3, &printcount, sizeof(printcount)));
          assert(sizeof(maxpeakhit) == write(fd4, &maxpeakhit, sizeof(maxpeakhit)));
          
-        printf("INITIALIZED: %d\n", getpid());
+        //printf("INITIALIZED: %d\n", getpid());
          CHK(sem_post(pmutx));
 
      } else {
@@ -79,7 +79,7 @@ void initStudentStuff(void) {
              //CHK(fd = open("countfile", O_RDWR));
          }
          
-         printf("NOT THE INITIALIZER: %d\n", getpid());
+         //printf("NOT THE INITIALIZER: %d\n", getpid());
          pmutx = sem_open(semaphoreMutx, O_RDWR);   //TODO: Initialize this to 1?
          CHK(fd = open("countfile", O_RDWR));
          CHK(fd2 = open("rowprintfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
@@ -120,10 +120,10 @@ void placeWidget(int n) {
     //printf("COUNT: %d\n", count);
     
   if (count == (nrRobots * quota)) {
-        printf("COUNT: %d\n", count);
-        printf("ROWPRINT: %d\n", rowprint);
-        printf("PRINTCOUNT: %d\n", printcount);
-        printf("MPH: %d\n", maxpeakhit);
+        //printf("COUNT: %d\n", count);
+        //printf("ROWPRINT: %d\n", rowprint);
+        //printf("PRINTCOUNT: %d\n", printcount);
+        //printf("MPH: %d\n", maxpeakhit);
         printeger(n);
         printf("F\n");
         CHK(close(fd));
@@ -137,38 +137,26 @@ void placeWidget(int n) {
         CHK(sem_close(pmutx));
         CHK(sem_unlink(semaphoreMutx));
         
-    } else {
-        
-        printf("COUNT:%d\n ", count);
-        printeger(n);
-        
-        int i;
-        for (i = 1; i <= rowprint; i++) {
-            printcount++;
-        }
-        
-        if (i == rowprint) {
-            printeger(n);
-            printf("N\n");
-            fflush(stdout);
         } else {
-            printeger(n);
-            fflush(stdout);
-        }
-        
-        if (printcount > ((nrRobots * quota) / 2)) {
-            //Max peak on triangle, start decerementing rowprint
-            maxpeakhit = 1;
-            //printf("COUNT MPH:%d ", count);
-            //printf("PRINTCOUNT MPH:%d ", printcount);
-            //printf("MAX PEAK HIT:%d\n", maxpeakhit);
-        }
-        
-        if (maxpeakhit == 0) {
-            rowprint++;
-        } else if (maxpeakhit == 1){
-            rowprint--;
-        }
+            int i;
+            for (i = 1; i <= rowprint; i++) {
+                printeger(n);
+                printcount++;
+                if (i == rowprint) {
+                    printf("N\n");
+                }
+            }
+            
+            if (printcount > ((nrRobots * quota) / 2)) {
+                //Max peak on triangle, start decerementing rowPrint
+                maxpeakhit = 1;
+            }
+            
+            if (maxpeakhit == 0) {
+                rowprint++;
+            } else if (maxpeakhit == 1){
+                rowprint--;
+            }
         
         
         CHK(lseek(fd, 0, SEEK_SET));
