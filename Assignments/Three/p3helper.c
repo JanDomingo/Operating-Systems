@@ -72,20 +72,27 @@ void initStudentStuff(void) {
 
      } else {
          //If process gets here before countfile is initialized, then wait on semaphore to finish
-         if (access("countfile", F_OK) == -1) {
+         //if (access("countfile", F_OK) == -1) {
              //if sem_wait is placed here then only once process will be printing out
-             sleep(random()%2);  //TODO: DELETE THIS WHEN PROGRAM IS FINISHED. FIND A WAY TO ELIMINATE RACE CONDITIONS
+             //sleep(random()%2);  //TODO: DELETE THIS WHEN PROGRAM IS FINISHED. FIND A WAY TO ELIMINATE RACE CONDITIONS
              //printf("NOT CREATED YET!!!");
              //CHK(fd = open("countfile", O_RDWR));
-         }
+         //}
          
          //printf("NOT THE INITIALIZER: %d\n", getpid());
+         
+         
+         
          pmutx = sem_open(semaphoreMutx, O_RDWR);   //TODO: Initialize this to 1?
+         
+         sem_wait(pmutx);
+         
          CHK(fd = open("countfile", O_RDWR));
          CHK(fd2 = open("rowprintfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
          CHK(fd3 = open("printcountfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
          CHK(fd4 = open("maxpeakhitfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
 
+         sem_post(pmutx);
      }
 }
 
@@ -98,7 +105,7 @@ void placeWidget(int n) {
     
     //TODO: CHECK IF THIS BLOCK EVER HAPPENS
     if (access("countfile", F_OK) == -1) {
-        printf("HHIIIIIIIIIIIII I DONT KNOW IF THIS BLOCK IS  SUPPOSED TO HAPPEN\n");
+        printf("UNSURE IF THIS BLOCK IS SUPPOSED TO HAPPEN\n");
         CHK(fd = open("countfile", O_RDWR));
     }
     
@@ -126,6 +133,7 @@ void placeWidget(int n) {
         //printf("MPH: %d\n", maxpeakhit);
         printeger(n);
         printf("F\n");
+      
         CHK(close(fd));
         CHK(unlink("countfile"));
         CHK(close(fd2));
@@ -138,25 +146,61 @@ void placeWidget(int n) {
         CHK(sem_unlink(semaphoreMutx));
         
         } else {
+            
+            
+            //When processes enter the for loop, it prints all together as a group and doesn't act as if
+            //it were waiting for its turn.
+            /*
             int i;
+            
+            
             for (i = 1; i <= rowprint; i++) {
-                printeger(n);
                 printcount++;
-                if (i == rowprint) {
-                    printf("N\n");
+                printf("Value of printcount: %d\n", printcount);
+            }*/
+            printcount++;
+            
+            
+            
+            if (printcount == rowprint) {
+                /*
+                printf("VALUE OF COUNT: %d\n", count);
+                printf("VALUE OF ROWPRINT: %d\n", rowprint);
+                printf("VALUE OF PRINTCOUNT: %d\n", printcount);
+                 */
+                
+                if (maxpeakhit == 0) {
+                    rowprint++;
+                } else if (maxpeakhit == 1){
+                    rowprint--;
                 }
+                
+                printeger(n);
+                printf("N\n");
+                fflush(stdout);
+                printcount = 0;
+                
+                
+            } else {
+                /*
+                printf("VALUE OF COUNT: %d\n", count);
+                printf("VALUE OF ROWPRINT: %d\n", rowprint);
+                printf("VALUE OF PRINTCOUNT: %d\n", printcount);
+                 */
+                printeger(n);
+                fflush(stdout);
             }
+            
+            
+            //printeger(n);
             
             if (printcount > ((nrRobots * quota) / 2)) {
                 //Max peak on triangle, start decerementing rowPrint
                 maxpeakhit = 1;
             }
             
-            if (maxpeakhit == 0) {
-                rowprint++;
-            } else if (maxpeakhit == 1){
-                rowprint--;
-            }
+
+            
         
         
         CHK(lseek(fd, 0, SEEK_SET));
