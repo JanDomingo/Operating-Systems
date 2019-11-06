@@ -1,8 +1,22 @@
-1. I wrote the p3helper.c code myself.
+I wrote the p3helper.c code myself.
 
-2. TBD - I believe everything works perfectly under all conditions. 
+I believe everything works perfectly under all conditions. 
 
-3. (Put explanation of how I achieved successful coordination)
+How successful coordination was achieved:
 
-4. (Optional - any other information to include)
+Semaphores:
+In the initStudentStuff function if a process successfully created the semaphore it sets the initial value 0 in order to lock it and avoid a race condition.
+All other processes are then proceeded to the else statement and then performs a sem_wait which blocks the process until it is released by the initial process (the one 
+that created the semaphore). This ensures that the temporary files are created first before any process can read from them. 
+Upon entering the placeWidget function, a sem_wait is placed in order to allow only one process at a time to modify the files and print the files. Once the process has finished, 
+it then performs a sem_post to allow other processes waiting to enter the semaphore to run. The placement of these semaphores allows avoidance of deadlocks and race conditions. 
+
+Triangular Printing Algorithm:
+In order to achieve successful printing of a triangular pattern, I had to create an additional 3 variables: rowprint, printcount, and maxpeakhit. Rowprint keeps track of the 
+row size that needs to be printed. Printcount keeps track of the number of processes printed in the current line. Maxpeakhit acts as a flag which changes value if the process
+past the halfway point gets printed. This helps check when the rowsize needs to start decrementing. First the process increases the printcount, which indicates which value 
+it is on the row. It then checks if the count value is greater than the total amount of robots divided by 2 in order to determine whether to set the maxpeakhit flag. If the process
+printcount is equal to the rowprint (e.g. it is the 3rd value printed on the 3rd row) then it is the last value for that row. Depending on the value of maxpeakhit, it will
+either increment or decrement the rowsize. It will then print out its process ID and then reset the value of printcount to zero. If the process is not the final process or a 
+line terminating process then it just simply prints its process ID. 
 

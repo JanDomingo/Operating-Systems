@@ -1,3 +1,21 @@
+//
+//  Name: Jan Domingo
+//  RedID: 820092657
+//  Class Account: CSSC0034
+//  Course: CS570 Operating Systems
+//  Instructor Name: John Carroll
+//  Section: 1
+//  Due Date: November 6, 2019
+//  Assignment: Program 3
+//  File name: p3helper.c
+//  Compiler Version: XCode 11.2 (1B52)
+//
+//  This assignment deals with semaphores, concurrent tasks, and shared variables. The placements of the
+//  semaphores avoids deadlocks and race conditions. The non-intializing processes have to wait for the
+//  temporary files to be created first before they are able to read from it. Likewise, only one process
+//  can enter the placeWidget function at a time which prints and updates the temporary files. The processes
+//  are then printed in a triangular fashion using the algorithm devised in placeWidget. 
+
 /* p3helper.c
    Program 3 assignment
    CS570
@@ -24,17 +42,13 @@ extern int quota;
 extern int seed;
 
 sem_t *pmutx;
-char semaphoreMutx[SEMNAMESIZE];    //Name of sempahore
-
+char semaphoreMutx[SEMNAMESIZE];
 int fd;
 int count;
-
 int fd2;
 int rowprint;
-
 int fd3;
 int printcount;
-
 int fd4;
 int maxpeakhit;
 
@@ -43,48 +57,44 @@ int maxpeakhit;
    */
 void initStudentStuff(void) {
     
+    //Creates a unique semaphore name to run in shared memory on edoras
     sprintf(semaphoreMutx,"/%s%ldmutx",COURSEID,(long)getuid());
     
      if ((pmutx = sem_open(semaphoreMutx, O_RDWR|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 0)) != SEM_FAILED) {
-         //printf("SEMPAPHORE NAME: %s\n", semaphoreMutx);
 
+         //Creates temporary files to store shared variable values
          CHK(fd = open("countfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
          CHK(fd2 = open("rowprintfile",O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
-         CHK(fd3 = open("printcountfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR)); //TODO: CHECK IF THIS LINE IS NEEDED
-         CHK(fd4 = open("maxpeakhitfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR)); //TODO: CHECK IF THIS LINE IS NEEDED
+         CHK(fd3 = open("printcountfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
+         CHK(fd4 = open("maxpeakhitfile", O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR));
          
+         //Sets initial values to write into the files
          count = 0;
          rowprint = 1;
          printcount= 0;
          maxpeakhit = 0;
          
-         CHK(lseek(fd,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
-         CHK(lseek(fd2,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
-         CHK(lseek(fd3,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
-         CHK(lseek(fd4,0,SEEK_SET)); //Move the read/write file pointer position to the beginning of the file
+         //Move the read/write file pointer position to the beginning of the file
+         CHK(lseek(fd,0,SEEK_SET));
+         CHK(lseek(fd2,0,SEEK_SET));
+         CHK(lseek(fd3,0,SEEK_SET));
+         CHK(lseek(fd4,0,SEEK_SET));
+         
+         //Writes current values into the files
          assert(sizeof(count) == write(fd,&count,sizeof(count)));
          assert(sizeof(rowprint) == write(fd2, &rowprint, sizeof(rowprint)));
          assert(sizeof(printcount) == write(fd3, &printcount, sizeof(printcount)));
          assert(sizeof(maxpeakhit) == write(fd4, &maxpeakhit, sizeof(maxpeakhit)));
          
-        //printf("INITIALIZED: %d\n", getpid());
+         //Releases the critical section
          CHK(sem_post(pmutx));
 
      } else {
-         //If process gets here before countfile is initialized, then wait on semaphore to finish
-         //if (access("countfile", F_OK) == -1) {
-             //if sem_wait is placed here then only once process will be printing out
-             //sleep(random()%2);  //TODO: DELETE THIS WHEN PROGRAM IS FINISHED. FIND A WAY TO ELIMINATE RACE CONDITIONS
-             //printf("NOT CREATED YET!!!");
-             //CHK(fd = open("countfile", O_RDWR));
-         //}
-         
-         //printf("NOT THE INITIALIZER: %d\n", getpid());
-         
-         
-         
+         //Processes that do not initialize the semaphore or create the files go here
+         //Performs a sem_open so that all processes use the same semaphore
          pmutx = sem_open(semaphoreMutx, O_RDWR);   //TODO: Initialize this to 1?
          
+         //Process gets blocked if the process creating the files have not released the semaphore yet
          sem_wait(pmutx);
          
          CHK(fd = open("countfile", O_RDWR));
@@ -96,9 +106,6 @@ void initStudentStuff(void) {
      }
 }
 
-/* In this braindamaged version of placeWidget, the widget builders don't
-   coordinate at all, and merely print a random pattern. You should replace
-   this code with something that fully follows the p3 specification. */
 void placeWidget(int n) {
     
     //Only one process at a time can enter the semaphore
@@ -119,7 +126,8 @@ void placeWidget(int n) {
     if (count == (nrRobots * quota)) {
         printeger(n);
         printf("F\n");
-      
+        fflush(stdout);
+        
         CHK(close(fd));
         CHK(unlink("countfile"));
         CHK(close(fd2));
@@ -132,6 +140,7 @@ void placeWidget(int n) {
         CHK(sem_unlink(semaphoreMutx));
             
     } else {
+        
         //*********************THIS SECTION MANAGES THE TRIANGULAR PRINTING ALGORITHM************************/
         //Process is not the last process. It will need to figure out where it will be printed on the triangle
         
@@ -177,7 +186,3 @@ void placeWidget(int n) {
     }
     
 }
-
-/* If you feel the need to create any additional functions, please
-   write them below here, with appropriate documentation:
-   */
