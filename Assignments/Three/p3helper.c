@@ -101,36 +101,22 @@ void initStudentStuff(void) {
    this code with something that fully follows the p3 specification. */
 void placeWidget(int n) {
     
+    //Only one process at a time can enter the semaphore
     CHK(sem_wait(pmutx));
-    
-    //TODO: CHECK IF THIS BLOCK EVER HAPPENS
-    if (access("countfile", F_OK) == -1) {
-        printf("UNSURE IF THIS BLOCK IS SUPPOSED TO HAPPEN\n");
-        CHK(fd = open("countfile", O_RDWR));
-    }
-    
-    
+        
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == read(fd, &count, sizeof(count)));
-    
     CHK(lseek(fd2,0,SEEK_SET));
     assert(sizeof(rowprint) == read(fd2, &rowprint, sizeof(rowprint)));
-    
     CHK(lseek(fd3,0,SEEK_SET));
     assert(sizeof(printcount) == read(fd3, &printcount, sizeof(printcount)));
-    
     CHK(lseek(fd4,0,SEEK_SET));
     assert(sizeof(maxpeakhit) == read(fd4, &maxpeakhit, sizeof(maxpeakhit)));
     
-    count++;
+    count++;    //count tracks the total number of process
     
-    //printf("COUNT: %d\n", count);
-    
-  if (count == (nrRobots * quota)) {
-        //printf("COUNT: %d\n", count);
-        //printf("ROWPRINT: %d\n", rowprint);
-        //printf("PRINTCOUNT: %d\n", printcount);
-        //printf("MPH: %d\n", maxpeakhit);
+    //Process goes here if it is the last one to be printed
+    if (count == (nrRobots * quota)) {
         printeger(n);
         printf("F\n");
       
@@ -144,96 +130,51 @@ void placeWidget(int n) {
         CHK(unlink("maxpeakhitfile"));
         CHK(sem_close(pmutx));
         CHK(sem_unlink(semaphoreMutx));
+            
+    } else {
+        //*********************THIS SECTION MANAGES THE TRIANGULAR PRINTING ALGORITHM************************/
+        //Process is not the last process. It will need to figure out where it will be printed on the triangle
         
+        printcount++;   //printcount tracks the number of processes printed on each line
+        
+        //Checks if count has already printed more than half of all process. If past the halfway mark,
+        //it will trigger maxpeakhit to 1 which will signal the line terminating process to decrement rowprint
+        if (count > ((nrRobots * quota) / 2)) {
+            maxpeakhit = 1;
+        }
+        
+        //Checks if the current process is the line terminating process
+        //(e.g. if the process is the 3rd printed on the line and on the 3rd row, then a new row is needed)
+        if (printcount == rowprint) {
+            if (maxpeakhit == 0) {
+                rowprint++;
+            } else if (maxpeakhit == 1) {
+                rowprint--;
+            }
+            printeger(n);
+            printf("N\n");
+            fflush(stdout);
+            printcount = 0; //Resets printcount as it only keeps track of the current line
+            
         } else {
-            
-            
-            //When processes enter the for loop, it prints all together as a group and doesn't act as if
-            //it were waiting for its turn.
-            /*
-            int i;
-            
-            
-            for (i = 1; i <= rowprint; i++) {
-                printcount++;
-                printf("Value of printcount: %d\n", printcount);
-            }*/
-            printcount++;
-            
-            if (count > ((nrRobots * quota) / 2)) {
-                //printf("IN N\n");
-                //Max peak on triangle, start decerementing rowPrint
-                maxpeakhit = 1;
-            }
-            
-            if (printcount == rowprint) {
-                /*
-                printf("VALUE OF COUNT: %d\n", count);
-                printf("VALUE OF ROWPRINT: %d\n", rowprint);
-                printf("VALUE OF PRINTCOUNT: %d\n", printcount);
-                 */
-                
-                
-                if (maxpeakhit == 0) {
-                    rowprint++;
-                    //printf("ROWPRINT PLUS PLUS ");
-                    //printf("VALUE OF PRINTCOUNT: %d ", printcount);
-                } else if (maxpeakhit == 1){
-                    rowprint--;
-                    //printf("ROWPRINT MINUS MINUS ");
-                    //printf("VALUE OF PRINTCOUNT: %d ", printcount);
-                }
-                
-                printeger(n);
-                printf("N\n");
-                fflush(stdout);
-                printcount = 0;
-                
-                
-            } else {
-                /*
-                printf("VALUE OF COUNT: %d\n", count);
-                printf("VALUE OF ROWPRINT: %d\n", rowprint);
-                printf("VALUE OF PRINTCOUNT: %d\n", printcount);
-                 */
-                printeger(n);
-                fflush(stdout);
-                
-                /*
-                if (printcount > ((nrRobots * quota) / 2)) {
-                    //printf("NOT N\n");
-                    //Max peak on triangle, start decerementing rowPrint
-                    maxpeakhit = 1;
-                }
-                 */
-                
-                
-            }
-            
-            
-            //printeger(n);
-            
-
-            
-
-            
+            //Process is not a line terminating process and only needs to print PID
+            printeger(n);
+            fflush(stdout);
+        }
         
-        
-        CHK(lseek(fd, 0, SEEK_SET));
-        assert(sizeof(count) == write(fd, &count, sizeof(count)));
-        CHK(lseek(fd2, 0, SEEK_SET));
-        assert(sizeof(rowprint) == write(fd2, &rowprint, sizeof(rowprint)));
-        CHK(lseek(fd3,0,SEEK_SET));
-        assert(sizeof(printcount) == write(fd3, &printcount, sizeof(printcount)));
-        CHK(lseek(fd4,0,SEEK_SET));
-        assert(sizeof(maxpeakhit) == write(fd4, &maxpeakhit, sizeof(maxpeakhit)));
-        
-        fflush(stdout);
-        
-        CHK(sem_post(pmutx));
-        
-    }
+    CHK(lseek(fd, 0, SEEK_SET));
+    assert(sizeof(count) == write(fd, &count, sizeof(count)));
+    CHK(lseek(fd2, 0, SEEK_SET));
+    assert(sizeof(rowprint) == write(fd2, &rowprint, sizeof(rowprint)));
+    CHK(lseek(fd3,0,SEEK_SET));
+    assert(sizeof(printcount) == write(fd3, &printcount, sizeof(printcount)));
+    CHK(lseek(fd4,0,SEEK_SET));
+    assert(sizeof(maxpeakhit) == write(fd4, &maxpeakhit, sizeof(maxpeakhit)));
     
+    fflush(stdout);
+    
+    CHK(sem_post(pmutx));
+    }
     
 }
 
