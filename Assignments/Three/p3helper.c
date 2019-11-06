@@ -14,7 +14,7 @@
 //  semaphores avoids deadlocks and race conditions. The non-intializing processes have to wait for the
 //  temporary files to be created first before they are able to read from it. Likewise, only one process
 //  can enter the placeWidget function at a time which prints and updates the temporary files. The processes
-//  are then printed in a triangular fashion using the algorithm devised in placeWidget. 
+//  are then printed in a triangular fashion using the algorithm devised in placeWidget.
 
 /* p3helper.c
    Program 3 assignment
@@ -92,15 +92,15 @@ void initStudentStuff(void) {
      } else {
          //Processes that do not initialize the semaphore or create the files go here
          //Performs a sem_open so that all processes use the same semaphore
-         pmutx = sem_open(semaphoreMutx, O_RDWR);   //TODO: Initialize this to 1?
+         pmutx = sem_open(semaphoreMutx, O_RDWR);
          
          //Process gets blocked if the process creating the files have not released the semaphore yet
          sem_wait(pmutx);
          
          CHK(fd = open("countfile", O_RDWR));
-         CHK(fd2 = open("rowprintfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
-         CHK(fd3 = open("printcountfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
-         CHK(fd4 = open("maxpeakhitfile", O_RDWR)); //TODO: CHECK IF THIS LINE IS NEEDED
+         CHK(fd2 = open("rowprintfile", O_RDWR));
+         CHK(fd3 = open("printcountfile", O_RDWR));
+         CHK(fd4 = open("maxpeakhitfile", O_RDWR));
 
          sem_post(pmutx);
      }
@@ -111,6 +111,7 @@ void placeWidget(int n) {
     //Only one process at a time can enter the semaphore
     CHK(sem_wait(pmutx));
         
+    //Reads the values from these shared files
     CHK(lseek(fd,0,SEEK_SET));
     assert(sizeof(count) == read(fd, &count, sizeof(count)));
     CHK(lseek(fd2,0,SEEK_SET));
