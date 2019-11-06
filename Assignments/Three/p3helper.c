@@ -160,7 +160,11 @@ void placeWidget(int n) {
             }*/
             printcount++;
             
-            
+            if (count > ((nrRobots * quota) / 2)) {
+                //printf("IN N\n");
+                //Max peak on triangle, start decerementing rowPrint
+                maxpeakhit = 1;
+            }
             
             if (printcount == rowprint) {
                 /*
@@ -169,10 +173,15 @@ void placeWidget(int n) {
                 printf("VALUE OF PRINTCOUNT: %d\n", printcount);
                  */
                 
+                
                 if (maxpeakhit == 0) {
                     rowprint++;
+                    //printf("ROWPRINT PLUS PLUS ");
+                    //printf("VALUE OF PRINTCOUNT: %d ", printcount);
                 } else if (maxpeakhit == 1){
                     rowprint--;
+                    //printf("ROWPRINT MINUS MINUS ");
+                    //printf("VALUE OF PRINTCOUNT: %d ", printcount);
                 }
                 
                 printeger(n);
@@ -189,15 +198,22 @@ void placeWidget(int n) {
                  */
                 printeger(n);
                 fflush(stdout);
+                
+                /*
+                if (printcount > ((nrRobots * quota) / 2)) {
+                    //printf("NOT N\n");
+                    //Max peak on triangle, start decerementing rowPrint
+                    maxpeakhit = 1;
+                }
+                 */
+                
+                
             }
             
             
             //printeger(n);
             
-            if (printcount > ((nrRobots * quota) / 2)) {
-                //Max peak on triangle, start decerementing rowPrint
-                maxpeakhit = 1;
-            }
+
             
 
             
