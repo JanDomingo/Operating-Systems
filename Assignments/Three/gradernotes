@@ -1,34 +1,8 @@
 I wrote the p3helper.c code myself.
 
-I believe everything works perfectly under all conditions. 
-
-How successful coordination was achieved:
-
-Semaphores:
-In the initStudentStuff function if a robot successfully created the semaphore it sets the initial value 0 in order to lock it. 
-All other robots then proceed to the else statement and then performs a sem_wait() which are blocked until it is released by the initializing robot.
-With the non-initialized robots blocked, the initalizing robot takes its time to create the common files. Afterwards, it performs a sem_post() which the other robots can then read from the common files.
-This avoids a race condition and ensures that the robots will always wait for the files to be created first before reading from it.
- 
-Upon entering the placeWidget function, a sem_wait is placed in order to allow only one process at a time to modify the files and print the files. Once the process has finished, 
-it then performs a sem_post to allow other processes waiting to enter the semaphore to run. If it is the last process, the common file descriptors are closed and the file names are unlinked.
-The   
-
-Triangular Printing Algorithm:
-In order to achieve successful printing of a triangular pattern, I had to create an additional 3 variables: rowprint, printcount, and maxpeakhit. Rowprint keeps track of the 
-row size that needs to be printed. Printcount keeps track of the number of processes printed in the current line. Maxpeakhit acts as a flag which changes value if the process
-past the halfway point gets printed. This helps check when the rowsize needs to start decrementing. First the process increases the printcount, which indicates which value 
-it is on the row. It then checks if the count value is greater than the total amount of robots divided by 2 in order to determine whether to set the maxpeakhit flag. If the process
-printcount is equal to the rowprint (e.g. it is the 3rd value printed on the 3rd row) then it is the last value for that row. Depending on the value of maxpeakhit, it will
-either increment or decrement the rowsize. It will then print out its process ID and then reset the value of printcount to zero. If the process is not the final process or a 
-line terminating process then it just simply prints its process ID. 
-
-I wrote the p3helper.c code myself.
-
 I believe everything works perfectly under all conditions.
 
 How successful coordination was achieved:
-
 
 Semaphores:
 In the initStudentStuff function if a robot successfully created the semaphore it sets the initial value 0 in order to lock it.                      
@@ -43,23 +17,23 @@ If it is the terminating robot, then it performs file cleanups by closing the fi
 
 Triangular Printing Algorithm:
 In order to achieve successful printing of a triangular pattern, I had to create  4 variables: count, rowprint, printcount, and maxpeakhit each with an initial value of 0, 1, 0, and 0 respectively. 
-Count keeps track of the total number of processes printed. Rowprint keeps track of the row it is on which corresponds to the amount of robots that needs to be printed for that line. 
-Printcount keeps track of the number of robots printed in the current row. Maxpeakhit acts as a flag which changes value if the process
-past the halfway point gets printed. Maxpeakhit helps check when the rowsize needs to start decrementing. 
 
-First the robot checks if it is the terminating robot. This is done by checking if the current amount of robots (count) equals to nrRobots * quota. If it is then it performs a printeger, followed by a printf("F\n") and an fflush then the file and semaphore cleanup (strategy of cleanup is described above).
+count - Each robot increments this value and keeps track of the current number of robots printed. This value is initialized to 0 but incremented when the first robot enters placeWidget
+rowprint - Only the line terminating robot increments or decrement this value. This keeps track of the current row which also corresponds to the amount of robots to print for that row. The initial value is 1 since it is also the amount of robots to print. (e.g. the first row will print only one robot, the second row will print two robots, the third row will print three robots...)
+printcount - Each robot increments this value but the line terminating robot resets this value to 0. This value keeps track of the number of robots printed on the current row. The value is initialized to 0 but incremented when a robot enters placeWidget.
+maxpeakhit - This value is either 0 or 1. The initial value is 0 but when the count value is greater than the total amount of robots (nrRobots * quota) this value is set to 1. When set to 1, it tells
+the line terminating robot to decrement the rowprint value. 
 
-If it is not the terminating robot, then printcount is increased. This indicates how many robots are on the current row so far. The robot then checks if its count value (total amount printed) is greater than the [(nrRobots * quota) / 2] in order to determine 
-if more than half of the total processes have been printed and whether to set the maxpeakhit flag. 
+First the robot checks if it is the terminating robot. This is done by checking if the current amount of robots (count) equals to (nrRobots * quota). If it is then it performs a printeger, followed by a printf("F\n") and an fflush then the file and semaphore cleanup (strategy of cleanup is described above).
 
-The robot then checks if it is the last value for that row by checking if printcount is equal to the rowprint (e.g. the 3rd value printed on the 3rd row)
-If it is, then it has to decide whether to increment or decrement the next row. This depends on the maxpeakhit value. If the maxpeakhit flag is set, it will start decrementing the rowprint, which shortens the length of each succeeding row 
-in order to create a triangle form. The robot will then print out its process ID and then reset the value of printcount to zero. It then performs a printeger followed by a printf("N\n"), an fflush, and resetting the printcount to 0. 
+If it is not the terminating robot, then printcount is increased. This indicates how many robots are on the current row so far. The robot then checks if its count value (total amount printed) is greater than [(nrRobots * quota) / 2]. This determines if more than half of the total amount of robots have already been printed and if it is, then it sets the maxpeakhit flag. 
+
+The robot then checks if it is the last value for that row by checking if printcount is equal to the rowprint (i.e. the amount of values printed on the row is equal to the row value. Ex: the 3rd robot on the 3rd row)
+If it is, then it has to decide whether to increment or decrement the next row. This depends on the maxpeakhit value. If the maxpeakhit flag is set to 1, it will decrement rowprint, which shortens the length of each succeeding row 
+in order to create a triangle form. The robot will then print out its process ID and then reset the value of printcount to 0. It then performs a printeger followed by a printf("N\n") and an fflush.
 
 If the robot is not the final process or a line terminating process then it just simply prints its process ID and then an fflush.
 
-To summarize: each robot is first checked if it is the last robot. If it is, then it performs file and semaphore cleanup. 
-If the program did not terminate then the bot checks if it has printed out more than half of its current process to determine whether to set the maxpeakhitflag. 
-Then it checks if it is the last robot for that row. If it is, then depending on the maxpeakhitflag, it either increments or decrements the value of the next row. 
-If it is not the last robot for that row, then it simply prints. 
+To demonstrate an example: 
+After entering the critical section, each robot effectively checks whether it is either the program terminating process, line terminating process, or neither. As an example, in the case of 15 total robots, the first robot would not be the line terminating robot since its count value (1) does not equal the total number of robots (15). The robot would then check if more than half of the robots have already printed. Since it has not then the maxpeakhit value remains zero. Since its printcount is 1 and rowprint 1, they are equal and it would be a line terminating robot. It then checks the maxpeakhit value and since it is zero, it increments the rowprint value and reset the printcount to zero. This robot then terminates by writing the current values into the common files and then releasing and exiting the semaphore. The second process will have a count value of 2, printcount of 1 and rowprint value of 2. Since the count value of (2) does not equal the total number of robots (15) it is not a line terminating process. It also checks if the maxpeakhitvalue should change and in this case it does not because more than half of the processes have not been printed yet. Since printcount (1) and rowprint (2) are not equal, it is not a line terminating process either. In this case, it just simply prints, fflush(), write its current values to the common files and releases the semaphore. When a robot has a count value greater than half of the total robots (8), it changes maxpeakhit to 1. Since it has a printcount value of (2) and rowprint of (4) each succeeding robot finishes printing until it is the line terminating robot. The line terminating robot sees that maxpeakhit changed to 1 and the next row will have one less than the current row. To shorten the example, with each succeeding robot, they enter the critical region read the common files (count, rowprint, printcount, maxpeakhit) and determine what type of robot it is (program terminating, line terminating, or neither). It performs the respective increments and update the values in the common files. Since the robots are 'queued' this effectively acts as a loop and runs until a robot has the count value which equals the total amount of robots. A robot does not know it is the final value until it compares its count value to the total. When this case is true, it simply closes and unlinks the  files and semaphores.
 

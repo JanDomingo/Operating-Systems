@@ -1,0 +1,3 @@
+cd /usr/man
+cd man1
+/bin/ls .
