@@ -1,0 +1,5 @@
+uname -a | tr a-z >your.outputu A-Z
+uname >>& your.outputu -a | tr a-z A-Z
+!!
+!3
+>>&your.outputu grep foo /nosuchfile

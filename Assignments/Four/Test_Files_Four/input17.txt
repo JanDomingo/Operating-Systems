@@ -1,0 +1,6 @@
+echo this redirection FAILS if your.outputp does not already exist>>your.outputp
+echo blank lines do not increment the prompt \| tr a-z A-Z>& your.outputp
+
+echo blank lines do not increment the prompt | tr a-z A-Z>>& your.outputp
+
+echo this redirection fails since your.outputp DOES already exist > your.outputp

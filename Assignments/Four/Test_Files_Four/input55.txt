@@ -1,0 +1,11 @@
+/usr/bin/pwd &
+ls -C | tr a-z A-Z &
+sleep 5 &
+sleep 5 &
+echo Examine the ps output to ensure that you are NOT leaving zombies!
+sleep 1
+/bin/ps -lyfww
+echo done (only as a first parameter) should end processing:
+done foo bar > notrelevant
+rm -f notrelevant
+echo ...so p2 should NEVER even see this line!

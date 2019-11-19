@@ -541,7 +541,7 @@ int main(int argc, char *argv[])
 
             } else {
                 //Non-backgrounded jobs wait for child
-                wait(NULL);
+                while(wait(NULL) != pid);
             }
         }
     }

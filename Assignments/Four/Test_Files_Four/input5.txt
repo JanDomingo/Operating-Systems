@@ -1,0 +1,4 @@
+/usr/bin/date
+/home/cs/faculty/cs570/jabbersleepy | tr -s a-zdep A-ZIAB &
+/usr/bin/date
+sleep 3

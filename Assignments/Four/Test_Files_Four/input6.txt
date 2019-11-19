@@ -1,0 +1,5 @@
+cd /var/spool/lpd
+cd ..
+!2
+cd log
+/usr/bin/pwd

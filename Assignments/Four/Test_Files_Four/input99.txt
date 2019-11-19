@@ -1,0 +1,2 @@
+/usr/bin/uname > your.outputO -a
+echo this should be REFUSED > your.outputO
