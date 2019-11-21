@@ -47,6 +47,7 @@
 #include <sys/wait.h>       //wait()
 #include <sys/stat.h>       //stat() -- NOT USED
 #include "getword.h"
+#include "CHK.h"
 
 #define MAX_ARGS 254
 
@@ -69,8 +70,10 @@ int ampersandIsLastFlag = NOT_SET;
 int inputRedirectionFlag = NOT_SET;
 int outputRedirectionFlag = NOT_SET;
 int outputRedirectionAmpersandFlag = NOT_SET;
+int pipeFlag = NOT_SET;
 int previousCmdCallSize;
 
+int pipeArraySplit = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -88,6 +91,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     int inputRedirectionCharCount = EMPTY;
     int outputRedirectionCharCount = EMPTY;
     int outputAmpersandRedirectionCharCount = EMPTY;
+    int pipeCharCount = EMPTY;
     
     int builtin_Flag = EMPTY;    //Determines if the parse function will return a 0
     int printErr = EMPTY;       //Prints only one "Ambiguous input redirect" error message
@@ -138,6 +142,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             if ((strcmp(argsLine, ">&") == MATCH)) {
                 outputAmpersandRedirectionCharCount++;
             }
+            
+            if ((strcmp(argsLine, "|") == MATCH)) {
+                pipeCharCount++;
+            }
         }
         
         //If there is a newline after words, then break and start evaluating words
@@ -146,6 +154,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             break;
         } else if ((getwordFnResult == EMPTY) && (wordCount == EMPTY)) {
             return EMPTY;
+            //Possibly add a flag here to indicate to not increment counter value?
         }
         
         //This block handles the end of stdin
@@ -314,7 +323,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
-            //If the output file is named ">" then do not copy into the output file name
+            //If the output file is named ">&" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist.\n");
                 builtin_Flag = SET;
@@ -335,6 +344,34 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             continue;
         }
         
+        //*******************************THIS SECTION HANDLES PIPE FLAG*************************************//
+        if ((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) {
+            //TODO: FIGURE OUT WHAT THIS IF STATEMENT DOES
+            //If pipeflag has already been set then produce an error?
+            if (pipeFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "|") == MATCH) {
+                fprintf(stderr, "%s", "Pipe error.\n");
+                builtin_Flag = SET; //TODO: CHECK IF THIS IS NEEDED FOR PIPES?
+                continue;
+            }
+            if (pipeCharCount > 1) {
+                fprintf(stderr, "%s", "Must only have one pipe.\n"); //TODO: CHECK IF WE ONLY CHECK FOR ONE PIPE
+                builtin_Flag = SET;
+                continue;
+            } else if (pipeCharCount == 1) {
+                pipeArraySplit = loopIteration;
+                pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
+                pipeFlag = SET;
+                builtin_Flag = SET;
+                arrayOfArgsLine[loopIteration] = NULL;
+                parameters[loopIteration] = NULL;
+                //TODO: Maybe create an array of the pipe info typed in here?
+                //printf("PIPE!!");
+                continue;
+                //parameters[loopIteration] = NULL;
+
+            }
+        }
+        
     
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
         //If the program made it this far then the word is an executable
@@ -352,7 +389,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         if ((strcmp(execCmd[execCmdIndex - 1], "&") == MATCH)) {
             if (indexArrayOfArgsLine > 1) {
                 ampersandIsLastFlag = SET;
-                execCmd[execCmdIndex - 1 ] = NULL;   //Deletes the '&' so it doesn't pass into execvp
+                execCmd[execCmdIndex - 1] = NULL;   //Deletes the '&' so it doesn't pass into execvp
             }
             else if (indexArrayOfArgsLine == 1) {
                 return EMPTY;   //Reissues prompt if & is just issued by itself
@@ -362,7 +399,6 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
 
     //Returns to main() for a rerun of the prompt
     if (builtin_Flag == SET) {
-        //memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         return BUILTINS;
     }
@@ -381,6 +417,15 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
 void signalHandler(int signal) {
     //Intentionally empty. This only handles SIGTERM for now.
 }
+
+void pipeExecute(char *newargv[]) {
+}
+
+
+
+
+
+
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE MAIN FUNCTION***********************************************//
@@ -450,6 +495,11 @@ int main(int argc, char *argv[])
             if (ampersandIsLastFlag == SET) {
                 printf("%s [%d]\n", parameters[FIRST_CMD], getpid());
             }
+            
+            if (pipeFlag == SET) {
+                pipeExecute(arrayOfArgsLine);
+            }
+            
             continue;
         }
         
