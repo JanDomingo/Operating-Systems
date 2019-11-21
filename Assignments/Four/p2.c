@@ -419,6 +419,44 @@ void signalHandler(int signal) {
 }
 
 void pipeExecute(char *newargv[]) {
+    int fildes[2];
+    pid_t childpid, grandchildpid;
+    
+    CHK(childpid = fork());
+    
+    //CHILD PROCESS
+    if (childpid == 0) {
+        CHK(pipe(fildes));  //Creates file desrciptors for the write and the read end
+        
+        CHK(grandchildpid = fork());
+        
+
+        if (grandchildpid == 0) {
+            //GRANDCHILD
+            dup2(fildes[1], fileno(stdout));
+            close(fildes[0]);
+            close(fildes[1]);
+            
+            execvp(newargv[0], newargv);
+            perror("GRANDCHILD ERROR");
+            exit(9);
+            
+        } else {
+            //CHILD
+            dup2(fildes[0], fileno(stdin));
+            //dup2(fildes[1], fileno(stdout));
+            close(fildes[0]);
+            close(fildes[1]);
+                        
+            execvp(newargv[pipeArraySplit], newargv + pipeArraySplit);
+            perror("CHILD ERROR");
+            exit(9);
+        }
+    }
+   // wait(&childpid);
+    //printf("PARENT PROCESS -- NOT CHILD");
+    //CHK(close(fildes[0]));
+    //CHK(close(fildes[1]));
 }
 
 

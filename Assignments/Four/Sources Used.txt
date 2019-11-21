@@ -1,0 +1,3 @@
+Piping:
+
+https://stackoverflow.com/questions/48066168/c-fork-and-pipe-multiple-process
