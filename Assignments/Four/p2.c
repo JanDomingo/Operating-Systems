@@ -73,6 +73,8 @@ int outputRedirectionAmpersandFlag = NOT_SET;
 int pipeFlag = NOT_SET;
 int previousCmdCallSize;
 
+int pointingAtPipeSymbol = NOT_SET;
+
 int pipeArraySplit = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
@@ -209,7 +211,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
     //This for loop iterates through arrayOfArgsLine and sets global flags as well as perform builtin
     //commands such as "cd" and "done". If it is not a builtin command, then it will create the execCmd array
-    //along with its parametersto be passed into execvp in main().
+    //along with its parameters to be passed into execvp in main().
     //Builtins will return 0 and Executables will return 1
     for (loopIteration = EMPTY; loopIteration < indexArrayOfArgsLine; loopIteration++) {
         
@@ -361,11 +363,12 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 pipeArraySplit = loopIteration;
                 pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
                 pipeFlag = SET;
-                builtin_Flag = SET;
+                //builtin_Flag = SET;
                 arrayOfArgsLine[loopIteration] = NULL;
                 parameters[loopIteration] = NULL;
                 //TODO: Maybe create an array of the pipe info typed in here?
                 //printf("PIPE!!");
+                pointingAtPipeSymbol = SET;
                 continue;
                 //parameters[loopIteration] = NULL;
 
@@ -377,6 +380,11 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //If the program made it this far then the word is an executable
         //execCmd is a secondary array and stores only executables and its parameters
         if (builtin_Flag != SET) {
+            if (pointingAtPipeSymbol == SET) {
+                execCmd[loopIteration] = NULL;
+                execCmd++;
+                pointingAtPipeSymbol = NOT_SET;
+            }
             execCmd[execCmdIndex] = strdup(arrayOfArgsLine[loopIteration]);
             execCmdIndex++;
         }
@@ -418,36 +426,60 @@ void signalHandler(int signal) {
     //Intentionally empty. This only handles SIGTERM for now.
 }
 
-void pipeExecute(char *newargv[]) {
+int pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) {
     int fildes[2];
     pid_t childpid, grandchildpid;
     
     CHK(childpid = fork());
+    CHK(pipe(fildes));  //Creates file desrciptors for the write and the read end
     
     //CHILD PROCESS
     if (childpid == 0) {
-        CHK(pipe(fildes));  //Creates file desrciptors for the write and the read end
         
         CHK(grandchildpid = fork());
         
-
         if (grandchildpid == 0) {
             //GRANDCHILD
-            dup2(fildes[1], fileno(stdout));
+            CHK(dup2(fildes[1], fileno(stdout)));
             close(fildes[0]);
             close(fildes[1]);
+            
+            if (inputRedirectionFlag == SET) {
+                //Returns the file descriptor value of the inputFileName value
+                int inputfd = open(inputFilename[FIRST_CMD], O_RDONLY);
+                if (inputfd < 0) {
+                    //perror("Inputfd error: ");
+                    exit(1);
+                }
+                
+                CHK(dup2(inputfd, fileno(stdin)));
+                close(inputfd);
+            }
             
             execvp(newargv[0], newargv);
             perror("GRANDCHILD ERROR");
             exit(9);
             
+            
         } else {
             //CHILD
-            dup2(fildes[0], fileno(stdin));
+            CHK(dup2(fildes[0], fileno(stdin)));
             //dup2(fildes[1], fileno(stdout));
             close(fildes[0]);
             close(fildes[1]);
                         
+            //Output Redirecection Specification
+            if (outputRedirectionFlag == SET) {
+                int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
+                if (outputfd < 0) {
+                    //perror("Outputfd error: ");
+                    exit(1);
+                }
+                
+                CHK(dup2(outputfd, fileno(stdout)));
+                (close(outputfd));
+            }
+            
             execvp(newargv[pipeArraySplit], newargv + pipeArraySplit);
             perror("CHILD ERROR");
             exit(9);
@@ -455,8 +487,9 @@ void pipeExecute(char *newargv[]) {
     }
    // wait(&childpid);
     //printf("PARENT PROCESS -- NOT CHILD");
-    //CHK(close(fildes[0]));
-    //CHK(close(fildes[1]));
+    CHK(close(fildes[0]));
+    CHK(close(fildes[1]));
+    return 0;
 }
 
 
@@ -533,11 +566,11 @@ int main(int argc, char *argv[])
             if (ampersandIsLastFlag == SET) {
                 printf("%s [%d]\n", parameters[FIRST_CMD], getpid());
             }
-            
-            if (pipeFlag == SET) {
-                pipeExecute(arrayOfArgsLine);
-            }
-            
+            continue;
+        }
+        
+        if (pipeFlag == SET) {
+            pipeExecute(execCmd, inputFilename, outputFilename);
             continue;
         }
         
