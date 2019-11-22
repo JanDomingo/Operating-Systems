@@ -620,12 +620,15 @@ int main(int argc, char *argv[])
             break;
         }
         
-        if (pipeFlag == SET && backslashPipeFlag == NOT_SET) {
+        if (pipeFlag == SET) {
+            if (backslashPipeFlag == SET) {
+                execCmd[pipeArraySplit] = "|";
+                parseResult = EXECUTABLE;
+                break;
+            }
             pipeExecute(execCmd, inputFilename, outputFilename);
+            pipeFlag = NOT_SET;
             continue;
-        } else {
-            execCmd[pipeArraySplit] = "|";
-            parseResult = EXECUTABLE;
         }
         
         if (parseResult == BUILTINS) {
