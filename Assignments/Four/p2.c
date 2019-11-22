@@ -74,6 +74,7 @@ int pipeFlag = NOT_SET;
 int previousCmdCallSize;
 
 int pointingAtPipeSymbol = NOT_SET;
+int backslashPipeFlag = NOT_SET;
 
 int pipeArraySplit = 0;
 //**********************************************************************************************************//
@@ -147,6 +148,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             
             if ((strcmp(argsLine, "|") == MATCH)) {
                 pipeCharCount++;
+            }
+            
+            if ((strcmp(argsLine, "\\|")) == MATCH) {
+                backslashPipeFlag = SET;
             }
         }
         
@@ -347,7 +352,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         
         //*******************************THIS SECTION HANDLES PIPE FLAG*************************************//
-        if ((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) {
+        if (((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) || ((strcmp(arrayOfArgsLine[loopIteration], "\\|")) == MATCH)) {
             //TODO: FIGURE OUT WHAT THIS IF STATEMENT DOES
             //If pipeflag has already been set then produce an error?
             if (pipeFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "|") == MATCH) {
@@ -371,7 +376,9 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 pointingAtPipeSymbol = SET;
                 continue;
                 //parameters[loopIteration] = NULL;
-
+            } else if (backslashPipeFlag == SET) {
+                pipeArraySplit = loopIteration;
+                //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
             }
         }
         
@@ -426,7 +433,39 @@ void signalHandler(int signal) {
     //Intentionally empty. This only handles SIGTERM for now.
 }
 
-int pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) {
     int fildes[2];
     pid_t childpid, grandchildpid;
     
@@ -485,11 +524,30 @@ int pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) 
             exit(9);
         }
     }
+    
+    //PARENT PROCESS
    // wait(&childpid);
     //printf("PARENT PROCESS -- NOT CHILD");
+    
+    if (ampersandIsLastFlag == SET) {
+        //Background jobs do not wait for child
+        printf("%s [%d]\n", newargv[FIRST_CMD], childpid);
+        
+        //If there is no filename specified for the input then redirect the child input to dev/null
+        //and ensures background jobs cannot read from terminal
+        if (inputRedirectionFlag == NOT_SET) {
+            int devnullpd = open("/dev/null", O_RDONLY);
+            if (devnullpd < 0) exit(1);
+           close(devnullpd);
+        }
+
+    } else {
+        //Non-backgrounded jobs wait for child
+        while(wait(NULL) != childpid);
+    }
+    
     CHK(close(fildes[0]));
     CHK(close(fildes[1]));
-    return 0;
 }
 
 
@@ -562,6 +620,14 @@ int main(int argc, char *argv[])
             break;
         }
         
+        if (pipeFlag == SET && backslashPipeFlag == NOT_SET) {
+            pipeExecute(execCmd, inputFilename, outputFilename);
+            continue;
+        } else {
+            execCmd[pipeArraySplit] = "|";
+            parseResult = EXECUTABLE;
+        }
+        
         if (parseResult == BUILTINS) {
             if (ampersandIsLastFlag == SET) {
                 printf("%s [%d]\n", parameters[FIRST_CMD], getpid());
@@ -569,10 +635,7 @@ int main(int argc, char *argv[])
             continue;
         }
         
-        if (pipeFlag == SET) {
-            pipeExecute(execCmd, inputFilename, outputFilename);
-            continue;
-        }
+
         
         if (parseResult == EXECUTABLE) {
             pid_t pid = fork();

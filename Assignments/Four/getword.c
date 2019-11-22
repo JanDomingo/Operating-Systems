@@ -159,12 +159,23 @@ int getword(char *w)
         if (iochar == '\\') {
             iochar = getchar();
             
+            if (iochar == '|') {
+                wordSize++;
+                *w = '\\';
+                w++;
+                wordSize++;
+                *w = iochar;
+                w++;
+                continue;
+            }
+            
             if (iochar == EOF)      //EOF is handled at the end of the program and so the program exits to go
                 break;              //to the corresponding EOF handler
             if (iochar == NEWLINE) {
                 ungetc(iochar,stdin);   //Pushes back newline to input stream for rerun
                 continue;               //Skips current block, continues to NEWLINE check
             }
+
             
             wordSize++;
             *w = iochar;            //Populates the w string array element with characters
