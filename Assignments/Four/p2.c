@@ -77,6 +77,8 @@ int pointingAtPipeSymbol = NOT_SET;
 int backslashPipeFlag = NOT_SET;
 
 int pipeArraySplit = 0;
+
+int shellNum = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -360,12 +362,13 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 builtin_Flag = SET; //TODO: CHECK IF THIS IS NEEDED FOR PIPES?
                 continue;
             }
-            if (pipeCharCount > 1) {
+            if (pipeCharCount == 2) {   //Set to two so that it only outputs once
                 fprintf(stderr, "%s", "Must only have one pipe.\n"); //TODO: CHECK IF WE ONLY CHECK FOR ONE PIPE
+                pipeCharCount++;
                 builtin_Flag = SET;
                 continue;
             } else if (pipeCharCount == 1) {
-                pipeArraySplit = loopIteration;
+                pipeArraySplit = execCmdIndex;
                 pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
                 pipeFlag = SET;
                 //builtin_Flag = SET;
@@ -377,7 +380,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 continue;
                 //parameters[loopIteration] = NULL;
             } else if (backslashPipeFlag == SET) {
-                pipeArraySplit = loopIteration;
+                pipeArraySplit = execCmdIndex;
                 //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
             }
         }
@@ -473,6 +476,7 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
     CHK(pipe(fildes));  //Creates file desrciptors for the write and the read end
     
     //CHILD PROCESS
+    //childpid = 0;
     if (childpid == 0) {
         
         CHK(grandchildpid = fork());
@@ -502,6 +506,7 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
             
         } else {
             //CHILD
+            //TODO: DO YOU HAVE TO WAIT FOR GRANDCHILD FIRST?
             CHK(dup2(fildes[0], fileno(stdin)));
             //dup2(fildes[1], fileno(stdout));
             close(fildes[0]);
@@ -511,12 +516,12 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
             if (outputRedirectionFlag == SET) {
                 int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
                 if (outputfd < 0) {
-                    //perror("Outputfd error: ");
+                    perror("Outputfd error: ");
                     exit(1);
                 }
                 
                 CHK(dup2(outputfd, fileno(stdout)));
-                (close(outputfd));
+                CHK((close(outputfd)));
             }
             
             execvp(newargv[pipeArraySplit], newargv + pipeArraySplit);
