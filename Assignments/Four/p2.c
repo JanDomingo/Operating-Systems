@@ -154,17 +154,36 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 }
                 break;
                 
-            } else {
+            }
+                //User inputted a "!$"
+            /*
+                else if (strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
+                    //Replaces "!$" with the last word of the previous command
+                        
+                    //TODO: DO TESTINGS WHEN THE !$ IS NOT THE FIRST CHARACTER ON INPUT LINE
+                    argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+                    indexArrayOfArgsLine = 0;
+                    wordCount = 0;
+                    continue;;
+                    
+            }*/ else if (strcmp(&argsLine[1], "$") != MATCH) {
                 fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9\n");
                 break;  //TODO: CHECK IF THIS IS THE RIGHT EXIT COMMAND. IT SHOULD JUST BREAK AND REEVALUATE THE WORDS
             }
         }
         
-        //User inputted a "!$"
-        if (strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
+        /*
+        if (wordCount > 0 && strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
             //Replaces "!$" with the last word of the previous command
-            argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
-        }
+            
+            if (historyPreviousLastWordIndex == 0) {
+                argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex];
+            } else {
+                argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+            }
+        }*/
+        
+
         
         
         //*********************THIS SECTION INCREMENTS THE FLAG COUNT VALUES*********************************/
@@ -254,6 +273,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             else if (indexArrayOfArgsLine == 1) {
                 return EMPTY;   //Reissues prompt if & is just issued by itself
             }
+        }
+    }
+    
+    //****************************THIS SECTION REPLACES THE '!$' ******************************************//
+    int bangDollarReplace = 0;
+    for (bangDollarReplace = EMPTY; bangDollarReplace < indexArrayOfArgsLine; bangDollarReplace++) {
+        if ((strcmp(arrayOfArgsLine[bangDollarReplace], "!$")) == MATCH) {
+            arrayOfArgsLine[bangDollarReplace] = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
         }
     }
     
@@ -426,10 +453,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
             }
         }
-        
-        //*******************************THIS SECTION HANDLES THE '!$' *************************************//
-        
-    
+ 
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
         //If the program made it this far then the word is an executable
         //execCmd is a secondary array and stores only executables and its parameters
@@ -484,11 +508,13 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     previousCmdCallSize = indexArrayOfArgsLine;
     
     //Loop that saves the history of input commands
-    int i;
+    int i;  //Iterates through the words in the inputted line
     for (i = 0; i < wordCount; i++) {
         historyArray[historyIndex][i] = arrayOfArgsLine[i];
     }
+    historyArraySize[historyIndex] = wordCount;
     historyIndex++;
+    historyPreviousLastWordIndex = i;
     
     return EXECUTABLE;
 }
