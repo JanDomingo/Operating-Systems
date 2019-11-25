@@ -32,6 +32,7 @@
 #define BUFFER_LIMIT (255 - 1) //255 is the STORAGE variable limit
 #define SPECIALCHAR '\\'    //Actually means just a single backslash but due to escape sequences in C, a
                             //double backslash is used to represent a single backslash
+int wordSize;
 
 //This function returns either a 0 or a 1 depending on if the iochar detected is a metacharacter
 //Possible cases for metacharacers: '>', '>>', '>&', '>>&', '|', '#', '&'
@@ -110,7 +111,27 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
         *w = iochar;
         w++;
         metaCharWordSize++;
-        return metaCharWordSize;    //return '#'
+        iochar = getchar();
+        if (iochar == ' ') {
+            //TODO: Does a ungetc go here?
+            ungetc(iochar, stdin);
+            return metaCharWordSize;
+        } else {
+            while (1) {
+                *w = iochar;
+                w++;
+                wordSize++;
+                iochar = getchar();
+                if (iochar == EOF || iochar == DELIMITER || iochar == NEWLINE) {
+                    ungetc(iochar, stdin);
+                    break;
+                }
+            }
+            return wordSize;
+        }
+        
+        
+        //return metaCharWordSize;    //return '#'
     }
     
     if (iochar == '&') {            //If just an '&' by itself
@@ -133,7 +154,7 @@ static int greedyAlgorithm(int iochar, char *w, char *wstart) {
 int getword(char *w)
 {
     int iochar;
-    int wordSize = EMPTY;
+    wordSize = EMPTY;
     static int endOfFileTrigger = EMPTY;
     
     //Saves a pointer to the start of the array to strcmp with 'done' at the end

@@ -183,8 +183,18 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }*/
         
-
         
+        //*********************THIS SECTION HANDLES THE POUND SIGN INPUT*************************************/
+        if (getwordFnResult == 1 && strcmp(argsLine, "#") == MATCH) {
+            //Exhausts the input stream as any characters after '#' are ignored
+            while(getwordFnResult != 0) {
+                getwordFnResult = getword(argsLine);
+            }
+            break;
+        }
+        
+
+
         
         //*********************THIS SECTION INCREMENTS THE FLAG COUNT VALUES*********************************/
         if (getwordFnResult > EMPTY) {
