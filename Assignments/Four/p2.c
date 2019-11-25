@@ -80,7 +80,7 @@ int backslashPipeFlag = NOT_SET;
 
 int pipeArraySplit = 0;
 
-int shellNum = 0;
+static int shellCounter = 1;
 
 static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
 static int historyArraySize[MAX_ARGS] = {-1};
@@ -495,7 +495,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         historyArraySize[historyIndex] = wordCount;
         historyIndex++;
         historyPreviousLastWordIndex = i;
-
+        
+        shellCounter++;
         return BUILTINS;
     }
 
@@ -516,6 +517,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     historyIndex++;
     historyPreviousLastWordIndex = i;
     
+    shellCounter++;
     return EXECUTABLE;
 }
 
@@ -557,6 +559,7 @@ void signalHandler(int signal) {
 
 
 void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) {
+    //shellCounter++;
     int fildes[2];
     pid_t childpid, grandchildpid;
     
@@ -694,7 +697,7 @@ int main(int argc, char *argv[])
         char *execCmd[MAX_ARGS] = {NULL};
         char *inputFilename[1] = {NULL};
         char *outputFilename[1] = {NULL};
-        printf("%%1%% ");
+        printf("%%%d%% ", shellCounter);
         fflush(stdout);
         fflush(stdin);
 

@@ -1,4 +1,4 @@
-cd /var/spool/lpd
+ cd /var/spool/lpd
 cd ..
 !2
 cd log
