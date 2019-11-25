@@ -85,6 +85,7 @@ int shellNum = 0;
 static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
 static int historyArraySize[MAX_ARGS] = {-1};
 static int historyIndex = 1;
+static int historyPreviousLastWordIndex = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -138,9 +139,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //Checks if the user input is between !1 and !9/
         if ((wordCount == 0) && strstr(&argsLine[0], "!") != 0) {
             int historyNumInput = atoi(&argsLine[1]);
-            int validHistoryNumInput = NOT_SET;
+
+            //User inputted a number after "!"
             if (historyNumInput >= 1 && historyNumInput <= 9) {
-                validHistoryNumInput = SET;
+
                 memcpy(arrayOfArgsLine, historyArray[historyNumInput], MAX_ARGS);
                 memcpy(parameters, historyArray[historyNumInput], MAX_ARGS);
                 indexArrayOfArgsLine = historyArraySize[historyNumInput];
@@ -152,20 +154,20 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 }
                 break;
                 
-                
             } else {
                 fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9\n");
                 break;  //TODO: CHECK IF THIS IS THE RIGHT EXIT COMMAND. IT SHOULD JUST BREAK AND REEVALUATE THE WORDS
             }
-            
-            
-            
         }
         
-
+        //User inputted a "!$"
+        if (strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
+            //Replaces "!$" with the last word of the previous command
+            argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+        }
         
         
-        
+        //*********************THIS SECTION INCREMENTS THE FLAG COUNT VALUES*********************************/
         if (getwordFnResult > EMPTY) {
             
             //Copies the word buffer created from getword() and into arrays
@@ -196,6 +198,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
         
+        //*********************THIS SECTION CHECKS FOR PROGRAM TERMINATION CASES*****************************/
         //If there is a newline after words, then break and start evaluating words
         //If there is a only a newline and no words, then rerun the prompt in main()
         if ((getwordFnResult == EMPTY) && (wordCount > EMPTY)) {
@@ -424,6 +427,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
         
+        //*******************************THIS SECTION HANDLES THE '!$' *************************************//
+        
     
         //*******************************THIS SECTION HANDLES EXECUTABLES***********************************//
         //If the program made it this far then the word is an executable
@@ -465,7 +470,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         historyArraySize[historyIndex] = wordCount;
         historyIndex++;
-        
+        historyPreviousLastWordIndex = i;
+
         return BUILTINS;
     }
 
