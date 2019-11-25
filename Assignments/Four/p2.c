@@ -79,6 +79,9 @@ int backslashPipeFlag = NOT_SET;
 int pipeArraySplit = 0;
 
 int shellNum = 0;
+
+static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
+static int historySize = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -418,6 +421,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     //Returns to main() for a rerun of the prompt
     if (builtin_Flag == SET) {
         memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
+        
+        //Loop that saves the history of input commands
+        int i;
+        for (i = 0; i < wordCount; i++) {
+            historyArray[historySize][i] = arrayOfArgsLine[i];
+        }
+        historySize++;
+        
         return BUILTINS;
     }
 
