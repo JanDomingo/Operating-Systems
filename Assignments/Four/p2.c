@@ -46,8 +46,10 @@
 #include <fcntl.h>          //open()
 #include <sys/wait.h>       //wait()
 #include <sys/stat.h>       //stat() -- NOT USED
+#include <string.h>         //strstr function
 #include "getword.h"
 #include "CHK.h"
+
 
 #define MAX_ARGS 254
 
@@ -81,7 +83,8 @@ int pipeArraySplit = 0;
 int shellNum = 0;
 
 static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
-static int historySize = 0;
+static int historyArraySize[MAX_ARGS] = {-1};
+static int historyIndex = 1;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -129,6 +132,39 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
             break;
         }
+        
+        //************************THIS SECTION HANDLES THE ![num] CHARACTER*********************************/
+        
+        //Checks if the user input is between !1 and !9/
+        if ((wordCount == 0) && strstr(&argsLine[0], "!") != 0) {
+            int historyNumInput = atoi(&argsLine[1]);
+            int validHistoryNumInput = NOT_SET;
+            if (historyNumInput >= 1 && historyNumInput <= 9) {
+                validHistoryNumInput = SET;
+                memcpy(arrayOfArgsLine, historyArray[historyNumInput], MAX_ARGS);
+                memcpy(parameters, historyArray[historyNumInput], MAX_ARGS);
+                indexArrayOfArgsLine = historyArraySize[historyNumInput];
+                wordCount = historyArraySize[historyNumInput];
+                
+                //Exhausts the input stream as any characters after '!!' are ignored
+                while(getwordFnResult != 0) {
+                    getwordFnResult = getword(argsLine);
+                }
+                break;
+                
+                
+            } else {
+                fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9\n");
+                break;  //TODO: CHECK IF THIS IS THE RIGHT EXIT COMMAND. IT SHOULD JUST BREAK AND REEVALUATE THE WORDS
+            }
+            
+            
+            
+        }
+        
+
+        
+        
         
         if (getwordFnResult > EMPTY) {
             
@@ -423,11 +459,12 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
         
         //Loop that saves the history of input commands
-        int i;
+        int i;  //Iterates through the words in the inputted line
         for (i = 0; i < wordCount; i++) {
-            historyArray[historySize][i] = arrayOfArgsLine[i];
+            historyArray[historyIndex][i] = arrayOfArgsLine[i];
         }
-        historySize++;
+        historyArraySize[historyIndex] = wordCount;
+        historyIndex++;
         
         return BUILTINS;
     }
@@ -439,6 +476,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     execCmd[execCmdIndex + 1] = NULL;
     memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
     previousCmdCallSize = indexArrayOfArgsLine;
+    
+    //Loop that saves the history of input commands
+    int i;
+    for (i = 0; i < wordCount; i++) {
+        historyArray[historyIndex][i] = arrayOfArgsLine[i];
+    }
+    historyIndex++;
+    
     return EXECUTABLE;
 }
 
