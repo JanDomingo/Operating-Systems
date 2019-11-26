@@ -160,14 +160,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             
             if(successInput == NOT_SET) {
                 if (historyNumInput >= 1 && historyNumInput <= 9) {
-                    fprintf(stderr, "%s", "History value does not exist\n");
+                    fprintf(stderr, "%s", "History value does not exist.\n");
                     shellCounter++;
                     continue;
                 }
             }
             
             if (strcmp(&argsLine[1], "$") != MATCH) {
-                fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9\n");
+                fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9.\n");
                 shellCounter++;
                 continue;
             }
@@ -728,14 +728,20 @@ int main(int argc, char *argv[])
         }
         
         if (pipeFlag == SET) {
-            if (backslashPipeFlag == SET) {
-                execCmd[pipeArraySplit] = "|";
-                parseResult = EXECUTABLE;
-                break;
+            if (execCmd[pipeArraySplit] != NULL) {
+                if (backslashPipeFlag == SET) {
+                    execCmd[pipeArraySplit] = "|";
+                    parseResult = EXECUTABLE;
+                    break;
+                }
+                pipeExecute(execCmd, inputFilename, outputFilename);
+                pipeFlag = NOT_SET;
+                continue;
+            } else {
+                fprintf(stderr, "%s", "Invalid NULL argument in the Child.\n");
+                pipeFlag = NOT_SET;
+                continue;
             }
-            pipeExecute(execCmd, inputFilename, outputFilename);
-            pipeFlag = NOT_SET;
-            continue;
         }
         
         if (parseResult == BUILTINS) {

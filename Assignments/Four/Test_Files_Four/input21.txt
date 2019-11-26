@@ -5,7 +5,7 @@ cd /tmp this and the next 6 should all cause complaints to be sent to stderr
 /usr/bin/uname <
 !99
 sort | &
-echo This echo, cd, and pwd SHOULD be executed by your shell and NOT cause erro$
+echo This echo, cd, and pwd SHOULD be executed by your shell and NOT cause errors
 cd /usr/include/sys # a legal comment
 /bin/pwd
 !! # > your.outputn NO redirection should occur!
