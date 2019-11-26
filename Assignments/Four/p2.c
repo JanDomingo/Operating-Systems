@@ -47,6 +47,7 @@
 #include <sys/wait.h>       //wait()
 #include <sys/stat.h>       //stat() -- NOT USED
 #include <string.h>         //strstr function
+#include "p2.h"
 #include "getword.h"
 #include "CHK.h"
 
@@ -87,7 +88,8 @@ static int historyArraySize[MAX_ARGS] = {-1};
 static int historyIndex = 1;
 static int historyPreviousLastWordIndex = 0;
 
-int appendFlag = 0;
+int appendFlag = NOT_SET;
+int appendAmpersandFlag = NOT_SET;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -439,10 +441,18 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">>")) == MATCH) {
             appendFlag = SET;
+            parameters[loopIteration] = NULL;
             //Saves the filename into inputFilename if the file exists
-            inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
+            outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
             continue;
         
+        }
+        
+        if ((strcmp(arrayOfArgsLine[loopIteration], ">>&")) == MATCH) {
+            appendAmpersandFlag = SET;
+            parameters[loopIteration] = NULL;
+            outputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
+            continue;
         }
         
         //*******************************THIS SECTION HANDLES PIPE FLAG*************************************//
@@ -636,7 +646,7 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
                     exit(1);
                 }
                 
-                int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
+                int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
                 if (outputfd < 0) {
                     perror("Outputfd error: ");
                     exit(1);
@@ -654,6 +664,36 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
                 CHK((close(outputfd)));
             }
             
+            //Append Flag
+           if (appendFlag == SET || appendAmpersandFlag == SET) {
+               
+               //If a file does not exist, then cannot write
+               int fileExists = access(outputFilename[FIRST_CMD], W_OK);
+               if (fileExists != MATCH) {
+                   fprintf(stderr, "%s", "Cannot find file to append.\n");
+                   exit(1);
+               }
+               
+               //TODO: appendFd is FAILING TO OPEN
+               printf("IN THE PIPE APPEND");
+               int appendFd = open(outputFilename[FIRST_CMD], O_RDWR | O_APPEND, S_IRWXU);
+               if (appendFd < 0) {
+                   exit(1);
+               }
+               
+               int appendDup = dup2(appendFd, fileno(stdout));
+               if (appendDup < 0) exit(1);
+               
+               //If ">>&" then also save the stderr to the outputfile
+               if (appendAmpersandFlag == SET) {
+                   int appendStdErrDup = dup2(appendFd, fileno(stderr));
+                   if (appendStdErrDup < 0) exit(1);
+               }
+               
+               CHK(dup2(appendFd, fileno(stderr)));
+               CHK(close (appendFd));
+           }
+           
             execvp(newargv[pipeArraySplit], newargv + pipeArraySplit);
             perror("CHILD ERROR");
             exit(9);
@@ -796,6 +836,7 @@ int main(int argc, char *argv[])
             //pid = CHILD;    //TODO: USED FOR DEBUGGING, DELETE THIS LINE AFTER DONE WORKING ON PROGRAM
             if (pid == CHILD) {
                                 
+                //Input Flag
                 if (inputRedirectionFlag == SET) {
                     
                     //Returns the file descriptor value of the inputFileName value
@@ -813,6 +854,7 @@ int main(int argc, char *argv[])
                     close (inputfd);
                 }
                 
+                //Output Flag
                 if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
                                        
                     //If a file already exists then cannot overwrite an existing file
@@ -822,10 +864,9 @@ int main(int argc, char *argv[])
                         exit(1);
                         
                     }
-                    
+                    printf("IN THE OG PROGRAM");
                     //Returns the file descriptor value of the inputFileName value
-                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC,
-                                        S_IRUSR, S_IWUSR);
+                    int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
                     if (outputfd < 0) {
                         //perror("Outputfd error");
                         exit(1);
@@ -848,14 +889,18 @@ int main(int argc, char *argv[])
                     close (outputfd);
                 }
                 
-                if (appendFlag == SET) {
+                //Append Flag
+                if (appendFlag == SET || appendAmpersandFlag == SET) {
+                    
+                    //If a file does not exist, then cannot write
                     int fileExists = access(outputFilename[FIRST_CMD], R_OK);
                     if (fileExists != MATCH) {
                         fprintf(stderr, "%s", "Cannot find file to append.\n");
                         exit(1);
                     }
                     
-                    int appendFd = open(outputFilename[FIRST_CMD], O_RDWR | O_TRUNC, S_IRUSR, S_IWUSR);
+                    //printf("ABOUT TO APPEND THIS FILE");
+                    int appendFd = open(outputFilename[FIRST_CMD], O_RDWR | O_APPEND, S_IRWXU);
                     if (appendFd < 0) {
                         exit(1);
                     }
@@ -863,7 +908,13 @@ int main(int argc, char *argv[])
                     int appendDup = dup2(appendFd, fileno(stdout));
                     if (appendDup < 0) exit(1);
                     
+                    //If ">>&" then also save the stderr to the outputfile
+                    if (appendAmpersandFlag == SET) {
+                        int appendStdErrDup = dup2(appendFd, fileno(stderr));
+                        if (appendStdErrDup < 0) exit(1);
+                    }
                     
+                    close (appendFd);
                 }
                 
                 execvp (execCmd[FIRST_CMD], execCmd);
@@ -872,6 +923,7 @@ int main(int argc, char *argv[])
                 perror("EXECVP FAILED");
                 exit(9);
             }
+            
             
             //THIS IS NOW THE PARENT PROCESS
             
