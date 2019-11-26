@@ -139,36 +139,37 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //Checks if the user input is between !1 and !9/
         if ((wordCount == 0) && strstr(&argsLine[0], "!") != 0) {
             int historyNumInput = atoi(&argsLine[1]);
-
+            int successInput = NOT_SET;
+            
             //User inputted a number after "!"
             if (historyNumInput >= 1 && historyNumInput <= 9) {
 
-                memcpy(arrayOfArgsLine, historyArray[historyNumInput], MAX_ARGS);
-                memcpy(parameters, historyArray[historyNumInput], MAX_ARGS);
-                indexArrayOfArgsLine = historyArraySize[historyNumInput];
-                wordCount = historyArraySize[historyNumInput];
-                
-                //Exhausts the input stream as any characters after '!!' are ignored
-                while(getwordFnResult != 0) {
-                    getwordFnResult = getword(argsLine);
+                if (historyArray[historyNumInput][0] != NULL) {
+                    memcpy(arrayOfArgsLine, historyArray[historyNumInput], MAX_ARGS);
+                    memcpy(parameters, historyArray[historyNumInput], MAX_ARGS);
+                    indexArrayOfArgsLine = historyArraySize[historyNumInput];
+                    wordCount = historyArraySize[historyNumInput];
+                    successInput = SET;
+                    //Exhausts the input stream as any characters after '![num]' are ignored
+                    while(getwordFnResult != 0) {
+                        getwordFnResult = getword(argsLine);
+                    }
+                    break;
                 }
-                break;
-                
             }
-                //User inputted a "!$"
-            /*
-                else if (strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
-                    //Replaces "!$" with the last word of the previous command
-                        
-                    //TODO: DO TESTINGS WHEN THE !$ IS NOT THE FIRST CHARACTER ON INPUT LINE
-                    argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
-                    indexArrayOfArgsLine = 0;
-                    wordCount = 0;
-                    continue;;
-                    
-            }*/ else if (strcmp(&argsLine[1], "$") != MATCH) {
+            
+            if(successInput == NOT_SET) {
+                if (historyNumInput >= 1 && historyNumInput <= 9) {
+                    fprintf(stderr, "%s", "History value does not exist\n");
+                    shellCounter++;
+                    continue;
+                }
+            }
+            
+            if (strcmp(&argsLine[1], "$") != MATCH) {
                 fprintf(stderr, "%s", "History value out of range. Enter a number from 1 through 9\n");
-                break;  //TODO: CHECK IF THIS IS THE RIGHT EXIT COMMAND. IT SHOULD JUST BREAK AND REEVALUATE THE WORDS
+                shellCounter++;
+                continue;
             }
         }
         
