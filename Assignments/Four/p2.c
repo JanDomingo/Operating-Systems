@@ -86,6 +86,8 @@ static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
 static int historyArraySize[MAX_ARGS] = {-1};
 static int historyIndex = 1;
 static int historyPreviousLastWordIndex = 0;
+
+int appendFlag = 0;
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -226,6 +228,8 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             if ((strcmp(argsLine, "\\|")) == MATCH) {
                 backslashPipeFlag = SET;
             }
+            
+            
         }
         
         //*********************THIS SECTION CHECKS FOR PROGRAM TERMINATION CASES*****************************/
@@ -356,7 +360,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //**********************THIS SECTION SETS INPUT/OUTPUT REDIRECTION FLAGS****************************//
         //This block handles the case of the metacharacter "<". If detected, SET the inputRedirectionFlag
         if ((strcmp(arrayOfArgsLine[loopIteration], "<")) == MATCH) {
-            //If the input file is named ">" then do not copy into the input file name
+            //If the input file is named "&" then do not copy into the input file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist.\n");
                 builtin_Flag = SET;
@@ -390,7 +394,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">")) == MATCH) {
-            //If the output file is named ">" then do not copy into the output file name
+            //If the output file is named "&" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist.\n");
                 builtin_Flag = SET;
@@ -412,7 +416,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
         
         if ((strcmp(arrayOfArgsLine[loopIteration], ">&")) == MATCH) {
-            //If the output file is named ">&" then do not copy into the output file name
+            //If the output file is named "&" then do not copy into the output file name
             if(ampersandIsLastFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "&") == MATCH) {
                 fprintf(stderr, "%s", "File does not exist.\n");
                 builtin_Flag = SET;
@@ -433,8 +437,17 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             continue;
         }
         
+        if ((strcmp(arrayOfArgsLine[loopIteration], ">>")) == MATCH) {
+            appendFlag = SET;
+            //Saves the filename into inputFilename if the file exists
+            inputFilename[FIRST_CMD] = strdup(arrayOfArgsLine[++loopIteration]);
+            continue;
+        
+        }
+        
         //*******************************THIS SECTION HANDLES PIPE FLAG*************************************//
-        if (((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) || ((strcmp(arrayOfArgsLine[loopIteration], "\\|")) == MATCH)) {
+        if (((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) ||
+            ((strcmp(arrayOfArgsLine[loopIteration], "\\|")) == MATCH)) {
             //TODO: FIGURE OUT WHAT THIS IF STATEMENT DOES
             //If pipeflag has already been set then produce an error?
             if (pipeFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "|") == MATCH) {
@@ -614,12 +627,27 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
             close(fildes[0]);
             close(fildes[1]);
                         
-            //Output Redirecection Specification
-            if (outputRedirectionFlag == SET) {
+            //Output redirection specification
+            if (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET) {
+                //If a file already exists then cannot overwrite an existing file
+                int fileExists = access(outputFilename[FIRST_CMD], R_OK);
+                if (fileExists == MATCH) {
+                    fprintf(stderr, "%s", "Cannot overwrite existing files.\n");
+                    exit(1);
+                }
+                
                 int outputfd = open(outputFilename[FIRST_CMD], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR, S_IWUSR);
                 if (outputfd < 0) {
                     perror("Outputfd error: ");
                     exit(1);
+                }
+                
+                //If ">&" then also save the stderr to the output file
+                if (outputRedirectionAmpersandFlag == SET) {
+                    int outputStdErrDup = dup2(outputfd, fileno(stderr));
+                    if (outputStdErrDup < 0) {
+                        exit(1);
+                    }
                 }
                 
                 CHK(dup2(outputfd, fileno(stdout)));
@@ -649,6 +677,7 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
         }
 
     } else {
+        //Since pipe execution only occurs here and NOT in the orignal p2 location, this wait is the parent
         //Non-backgrounded jobs wait for child
         while(wait(NULL) != childpid);
     }
@@ -727,17 +756,20 @@ int main(int argc, char *argv[])
             break;
         }
         
-        if (pipeFlag == SET) {
+        if (pipeFlag == SET || backslashPipeFlag == SET) {
             if (execCmd[pipeArraySplit] != NULL) {
                 if (backslashPipeFlag == SET) {
                     execCmd[pipeArraySplit] = "|";
                     parseResult = EXECUTABLE;
-                    break;
-                }
-                pipeExecute(execCmd, inputFilename, outputFilename);
-                pipeFlag = NOT_SET;
-                continue;
+                    backslashPipeFlag = NOT_SET;    //Resets
+                    //continue;
+                } else {
+                    pipeExecute(execCmd, inputFilename, outputFilename);
+                    pipeFlag = NOT_SET;
+                    continue;
+                    }
             } else {
+                //Child arguments are NULL and cannot be executed
                 fprintf(stderr, "%s", "Invalid NULL argument in the Child.\n");
                 pipeFlag = NOT_SET;
                 continue;
@@ -814,6 +846,24 @@ int main(int argc, char *argv[])
                         }
                     }
                     close (outputfd);
+                }
+                
+                if (appendFlag == SET) {
+                    int fileExists = access(outputFilename[FIRST_CMD], R_OK);
+                    if (fileExists != MATCH) {
+                        fprintf(stderr, "%s", "Cannot find file to append.\n");
+                        exit(1);
+                    }
+                    
+                    int appendFd = open(outputFilename[FIRST_CMD], O_RDWR | O_TRUNC, S_IRUSR, S_IWUSR);
+                    if (appendFd < 0) {
+                        exit(1);
+                    }
+                    
+                    int appendDup = dup2(appendFd, fileno(stdout));
+                    if (appendDup < 0) exit(1);
+                    
+                    
                 }
                 
                 execvp (execCmd[FIRST_CMD], execCmd);
