@@ -1,7 +1,9 @@
 echo last word is uname
 !!
-arch
-!$ > !$
+touch arch
+!$ >> !$
 ls -l !$ | grep arch
+!4
+!5
 !2
 !$ -v

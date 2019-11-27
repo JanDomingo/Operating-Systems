@@ -1,0 +1,1 @@
+rm your.outputO your.outputb your.outputc your.outpute your.outputf your.outputt

@@ -90,6 +90,8 @@ static int historyPreviousLastWordIndex = 0;
 
 int appendFlag = NOT_SET;
 int appendAmpersandFlag = NOT_SET;
+int bangDollarFlag = NOT_SET;
+
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
 //**********************************************************************************************************//
@@ -231,6 +233,10 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 backslashPipeFlag = SET;
             }
             
+            if ((strcmp(argsLine, "!$")) == MATCH) {
+                bangDollarFlag = SET;
+            }
+            
             
         }
         
@@ -294,11 +300,15 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     }
     
     //****************************THIS SECTION REPLACES THE '!$' ******************************************//
-    int bangDollarReplace = 0;
-    for (bangDollarReplace = EMPTY; bangDollarReplace < indexArrayOfArgsLine; bangDollarReplace++) {
-        if ((strcmp(arrayOfArgsLine[bangDollarReplace], "!$")) == MATCH) {
-            arrayOfArgsLine[bangDollarReplace] = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+    if (bangDollarFlag == SET) {
+        int bangDollarReplace = 0;
+        for (bangDollarReplace = EMPTY; bangDollarReplace < indexArrayOfArgsLine; bangDollarReplace++) {
+            if ((strcmp(arrayOfArgsLine[bangDollarReplace], "!$")) == MATCH &&
+                (arrayOfArgsLine[bangDollarReplace]) != NULL) {
+                arrayOfArgsLine[bangDollarReplace] = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+            }
         }
+        bangDollarFlag = NOT_SET;
     }
     
     //*********************************THIS LOOP ANALYZES THE USER COMMAND**********************************//
@@ -472,11 +482,11 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                 continue;
             } else if (pipeCharCount == 1) {
                 pipeArraySplit = execCmdIndex;
-                pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
+                //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
                 pipeFlag = SET;
                 //builtin_Flag = SET;
-                arrayOfArgsLine[loopIteration] = NULL;
-                parameters[loopIteration] = NULL;
+                //arrayOfArgsLine[loopIteration] = NULL;
+                //parameters[loopIteration] = NULL;
                 //TODO: Maybe create an array of the pipe info typed in here?
                 //printf("PIPE!!");
                 pointingAtPipeSymbol = SET;
@@ -493,7 +503,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //execCmd is a secondary array and stores only executables and its parameters
         if (builtin_Flag != SET) {
             if (pointingAtPipeSymbol == SET) {
-                execCmd[loopIteration] = NULL;
+                execCmd[loopIteration] = "|";
                 execCmd++;
                 pointingAtPipeSymbol = NOT_SET;
             }
@@ -694,7 +704,7 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
                CHK(close (appendFd));
            }
            
-            execvp(newargv[pipeArraySplit], newargv + pipeArraySplit);
+            execvp(newargv[pipeArraySplit + 1], newargv + (pipeArraySplit + 1));
             perror("CHILD ERROR");
             exit(9);
         }
@@ -786,6 +796,12 @@ int main(int argc, char *argv[])
         outputRedirectionAmpersandFlag = NOT_SET;
         ampersandIsLastFlag = NOT_SET;
         
+        appendFlag = NOT_SET;
+        appendAmpersandFlag = NOT_SET;
+        bangDollarFlag = NOT_SET;
+        pointingAtPipeSymbol = NOT_SET;
+        backslashPipeFlag = NOT_SET;
+        
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
         //parameters is an array of pointers to char with each element being a word from the cmd line input
@@ -797,13 +813,14 @@ int main(int argc, char *argv[])
         }
         
         if (pipeFlag == SET || backslashPipeFlag == SET) {
-            if (execCmd[pipeArraySplit] != NULL) {
+            if (execCmd[pipeArraySplit + 1] != NULL) {
                 if (backslashPipeFlag == SET) {
                     execCmd[pipeArraySplit] = "|";
                     parseResult = EXECUTABLE;
                     backslashPipeFlag = NOT_SET;    //Resets
                     //continue;
                 } else {
+                    execCmd[pipeArraySplit] = NULL;
                     pipeExecute(execCmd, inputFilename, outputFilename);
                     pipeFlag = NOT_SET;
                     continue;
@@ -827,7 +844,7 @@ int main(int argc, char *argv[])
         
         if (parseResult == EXECUTABLE) {
             pid_t pid = fork();
-            
+            //pid = CHILD;
             if (pid == FORK_FAILED) {
                 perror("Fork Failed");
                 exit(1);
@@ -913,7 +930,6 @@ int main(int argc, char *argv[])
                         int appendStdErrDup = dup2(appendFd, fileno(stderr));
                         if (appendStdErrDup < 0) exit(1);
                     }
-                    
                     close (appendFd);
                 }
                 
