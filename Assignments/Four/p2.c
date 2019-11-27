@@ -133,7 +133,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             wordCount = previousCmdCallSize;
             //indexArrayOfArgsLine = previousCmdCallSize;
             //wordCount = previousCmdCallSize;
-            
+            historyCopiedFlag = SET;
             //Exhausts the input stream as any characters after '!!' are ignored
             while(getwordFnResult != 0) {
                 getwordFnResult = getword(argsLine);
@@ -286,6 +286,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     //**********************************END OF TOKENIZATION*************************************************//
     
     
+    //****************THIS INCREMENTS FLAG COUNT VALUES FOR LINES COPIED FROM HISTORY***********************//
     if (historyCopiedFlag == SET) {
         int checkHistoryForMetaChars;
         for (checkHistoryForMetaChars = 0; checkHistoryForMetaChars < wordCount; checkHistoryForMetaChars++) {
@@ -545,7 +546,6 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     }
     
     //*************THIS SECTION DETERMINES WHETHER TO RETURN A BUILTIN OR EXECUTABLE TO MAIN****************//
-    
     //This block handles the ampersandIsLastFlag
     if (execCmd[execCmdIndex - 1] != NULL) {    //Gets around bad thread error if parameter[lastIndex] is null
         if ((strcmp(execCmd[execCmdIndex - 1], "&") == MATCH)) {
@@ -584,7 +584,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     memcpy(previousCommandCall, arrayOfArgsLine, MAX_ARGS);
     previousCmdCallSize = indexArrayOfArgsLine;
     
-    //Loop that saves the history of input commands
+    //***************************THIS SECTION SAVES TO THE HISTORY ARRAY************************************//
     int i;  //Iterates through the words in the inputted line
     for (i = 0; i < wordCount; i++) {
         historyArray[historyIndex][i] = arrayOfArgsLine[i];
@@ -833,6 +833,8 @@ int main(int argc, char *argv[])
         bangDollarFlag = NOT_SET;
         pointingAtPipeSymbol = NOT_SET;
         backslashPipeFlag = NOT_SET;
+        
+        
         
         //Argument Descriptions:
         //argsLine will store the characters that were passed in by the getword() function
