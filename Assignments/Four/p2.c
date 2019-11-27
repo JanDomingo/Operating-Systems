@@ -91,6 +91,7 @@ static int historyPreviousLastWordIndex = 0;
 int appendFlag = NOT_SET;
 int appendAmpersandFlag = NOT_SET;
 int bangDollarFlag = NOT_SET;
+int historyCopiedFlag = NOT_SET;
 
 //**********************************************************************************************************//
 //**********************************THIS IS THE PARSE FUNCTION**********************************************//
@@ -156,6 +157,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
                     indexArrayOfArgsLine = historyArraySize[historyNumInput];
                     wordCount = historyArraySize[historyNumInput];
                     successInput = SET;
+                    historyCopiedFlag = SET;
                     //Exhausts the input stream as any characters after '![num]' are ignored
                     while(getwordFnResult != 0) {
                         getwordFnResult = getword(argsLine);
@@ -283,6 +285,36 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
     }
     //**********************************END OF TOKENIZATION*************************************************//
     
+    
+    if (historyCopiedFlag == SET) {
+        int checkHistoryForMetaChars;
+        for (checkHistoryForMetaChars = 0; checkHistoryForMetaChars < wordCount; checkHistoryForMetaChars++) {
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], "<") == MATCH)) {
+                inputRedirectionCharCount++;
+            }
+            
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], ">") == MATCH)) {
+                outputRedirectionCharCount++;
+            }
+            
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], ">&") == MATCH)) {
+                outputAmpersandRedirectionCharCount++;
+            }
+            
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], "|") == MATCH)) {
+                pipeCharCount++;
+            }
+            
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], "\\|")) == MATCH) {
+                backslashPipeFlag = SET;
+            }
+            
+            if ((strcmp(arrayOfArgsLine[checkHistoryForMetaChars], "!$")) == MATCH) {
+                bangDollarFlag = SET;
+            }
+        }
+        historyCopiedFlag = NOT_SET;
+    }
     
     //*****************************THIS SECTION SETS GLOBAL FLAGS*******************************************//
 
