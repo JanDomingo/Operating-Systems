@@ -1,2 +1,0 @@
-echo dog feet | tr -s dogfe catha>your.outputt
-echo dog feet \| tr -s dogfe cathaio

@@ -1,0 +1,46 @@
+I wrote this code myself and cited ideas from sources. The source used for the specifications for program 4 include: 
+C fork and pipe multiple process - Used to find the placements of fork(), dup2(), and close() in the child and grandchild for the piping process.
+https://stackoverflow.com/questions/48066168/c-fork-and-pipe-multiple-process
+ 
+
+/*****AREAS WHERE p2 DOES NOT WORK*****/
+Areas where p2 does not work:
+Test 14 (input 12) and test24 (input18)
+On test 14 input12, the execution causes ESCHEW to print on the same line as the prompt. The execution of the pipe and the output is correct but the placement of the prompt is not. The current output is :
+%1% ESCHEW
+
+OBFUSCATION\
+
+%2% p2 terminated.
+
+I have made attempts to print out ESCHEW on the next line and was successful however it was not picked up by the auto-grader so I just reverted it back to this current output. 
+
+
+On test 24 input18, they are both handled the same with and without the argument input so in both cases it prints '#big hi'. Additionally, the prompt is printed as well so the results print:
+%1% #big hi  
+%2% #big hi
+/*****************************/
+
+
+/*****INDIVIDUAL CHOICES*****/
+Individual choices:
+Handling multiple redirections: In the parse() function, each metacharacter regarding IO redirection also has an int variable that keeps count of how many times it has appeared in the program. Inside parse(), there is a loop that iterates through each word in the line. When parse detects a ">" or "<" or ">&" a variable regarding each metacharacter gets incremented. If the same metacharacter is detected and the value of the variable is greater than 1 then it prints out a message to stderr and exits the loop. 
+
+Piping: When a pipe is detected it increments a variable called pipeCharCount. This is used to check if there is more than one pipe implemented. In parse, if there are two pipes detected then it prints an error and exits the loop. Otherwise, it sets the pipeFlag. When this is set, when the program returns to main it goes to the pipeExecute function in order to execute the process with a grandchild. This function replaces the original fork as when the program enters the pipeExecute() function and performs its task then exit, the program will then rerun without touching the original implementation of child and forking. For clarification about "Does ONLY the ORIGINAL p2 use wait()" in the checklist, since the pipeExecute() forks is independent of the original fork, the wait() statement inside the pipeExecute() function is still the original parent and there are no wait statements used in the child or grandchild. 
+
+Name reported in a backgrounded pipeline: To test this the command "ls -C | tr A-Z a-z &" was inputted for the first prompt. On a sample run, the result was:
+%1% ls -C | tr A-Z a-z &
+ls [8294]
+%2% chk.h getword.c p2 ...
+Therefore the name reported in a background pipeline is the child process.
+/*****************************/
+
+
+/*****UNEXPECTED BEHAVIORS*****/ 
+For ambiguous output redirections such as echo hi > a >> b this is handled by checking in the child if the flags of both outputRedirectionFlag and the AppendFlag are set. If they are then The child outputs a message to stderr and exits. 
+
+
+
+
+
+ 

@@ -5,10 +5,10 @@
 //  Course: CS570 Operating Systems
 //  Instructor Name: John Carroll
 //  Section: 1
-//  Due Date: October 9, 2019
-//  Assignment: Program 2
+//  Due Date: November 29, 2019
+//  Assignment: Program 4
 //  File name: p2.c
-//  Compiler Version: XCode 11.0 (11A420a)
+//  Compiler Version: XCode 11.2.1 (11B500)
 //
 //  This program is a command line interpreter for the UNIX system and acts like a shell. It handles built in
 //  commands such as (done, cd, and !!) as well as executables such as (echo, ls, sleep, and filepaths to
@@ -16,6 +16,9 @@
 //  of a fork. Additionally, this program also handles unix redirection with the ">", "<", and the ">&"
 //  metacharacters. If the program is misused, appropriate error messages /are also displayed. This program
 //  also uses basic signal handling. An example of basic use of this program is: "echo hello > createFile.txt"
+//
+//  Specifications for program 4 added the usage of piping | and \|, history ![num] or !$,
+//  appending files >> or >>&, comments #, and incrementing the prompt on non empty input lines.
 //
 //  Program logic/alogorithm: The program first starts an intialization of the signal catcher followed by
 //  a prompt then checking argv[1] so that the program can also read in inputs with existing filenames in
@@ -37,6 +40,7 @@
 //  fork, if the background jobs will not wait for a child is the user inputted an ampersand as the last
 //  character in their input. Otherwise, non backgrounded jobs will wait for the child. When an EOF is reached
 //  from stdin, the program then kills the process group signal and exits successfully.
+//
 
 #include <stdio.h>          //fflush()
 #include <stdlib.h>         //getenv(), exit()
@@ -83,7 +87,7 @@ int pipeArraySplit = 0;
 
 static int shellCounter = 1;
 
-static char *historyArray[MAX_ARGS][MAX_ARGS] = {NULL};
+static char *historyArray[11][MAX_ARGS] = {NULL};   //Size is 11 since index 0 is not used
 static int historyArraySize[MAX_ARGS] = {-1};
 static int historyIndex = 1;
 static int historyPreviousLastWordIndex = 0;
@@ -603,37 +607,6 @@ void signalHandler(int signal) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[]) {
     //shellCounter++;
     int fildes[2];
@@ -641,7 +614,6 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
     
     CHK(childpid = fork());
     CHK(pipe(fildes));  //Creates file desrciptors for the write and the read end
-    
     //CHILD PROCESS
     //childpid = 0;
     if (childpid == 0) {
@@ -673,7 +645,6 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
             
         } else {
             //CHILD
-            //TODO: DO YOU HAVE TO WAIT FOR GRANDCHILD FIRST?
             CHK(dup2(fildes[0], fileno(stdin)));
             //dup2(fildes[1], fileno(stdout));
             close(fildes[0]);
@@ -716,8 +687,6 @@ void pipeExecute(char *newargv[], char *inputFilename[], char *outputFilename[])
                    exit(1);
                }
                
-               //TODO: appendFd is FAILING TO OPEN
-               printf("IN THE PIPE APPEND");
                int appendFd = open(outputFilename[FIRST_CMD], O_RDWR | O_APPEND, S_IRWXU);
                if (appendFd < 0) {
                    exit(1);
@@ -884,9 +853,15 @@ int main(int argc, char *argv[])
                 exit(1);
             }
 
-            //pid = CHILD;    //TODO: USED FOR DEBUGGING, DELETE THIS LINE AFTER DONE WORKING ON PROGRAM
             if (pid == CHILD) {
-                                
+                               
+                //Error checking - checks for multiple output symbols
+                if ((appendFlag == SET || appendAmpersandFlag == SET) &&
+                    (outputRedirectionFlag == SET || outputRedirectionAmpersandFlag == SET)) {
+                    fprintf(stderr, "%s", "Ambiguous output redirection.\n");
+                    exit(1);
+                }
+                
                 //Input Flag
                 if (inputRedirectionFlag == SET) {
                     

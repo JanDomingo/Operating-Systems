@@ -1,3 +1,0 @@
-<i9.txt tr a-z A-Z | tr \\\\ q > your.outputc.txt
-
-cat i9.txt|tr a-z A-Z
