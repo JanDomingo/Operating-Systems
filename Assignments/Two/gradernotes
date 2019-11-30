@@ -1,0 +1,62 @@
+I wrote this code myself and cited ideas from some sources. These sources include: 
+
+How to get the parent directory of the current folder in a C program
+https://stackoverflow.com/questions/5233559/how-to-get-the-parent-directory-of-the-current-folder-in-a-c-program
+
+Determine whether or not execvp succeeded or failed
+https://stackoverflow.com/questions/33489653/determine-whether-or-not-execvp-succeeded-or-failed
+
+Copying Command Line Arguments into an Array
+https://stackoverflow.com/questions/7759140/copying-command-line-arguments-into-an-array
+
+Fork and execvp 
+https://www.youtube.com/watch?v=O1UOWScmqxg
+
+C Programming in Linux Tutorial #075 - Redirect
+https://www.youtube.com/watch?v=fL-zXw_oLbC Programming in Linux Tutorial #075 - Redirect
+
+Unexpected Behaviors:
+- Wait(): The program does not properly execute input6 and sometimes input9. I suspect it is an issue with the wait() function as the autograder for test17 input6 specifies there could be a problem waiting for foreground children. Input9 handles IO properly but
+  sometimes the contents of your.outputf can be empty. However, this  occurence of your.outputf being empty has drastically decreased after implementing an open("dev/null", O_RDONLY)  in the background process, however there is still a chance that your.outputf could be empty.
+
+Current Bugs/Design Flaws:
+- Perror(): Inside the main function and inside the child fork, when handling input/output reidection, the spaces with the intended perrors do not properly work. The open() function will successfuly create
+   a file descriptor and dup2 will successfully change the stdin or stdout to that file descriptor number but yet perror will still run. As a workaround, I suprressed the perror print statements 
+   with comments in main() and replaced perror print locations in parse with fprintf() to stderr and substituting what should have been printed with a perror. 
+- The *parameters[] array was designed as an array to reference from main, however it was causing issues with splint. Therefore it now serves the same function as *arrayOfArgsLine[] and is redundant. This is not 
+   necesarily a "bug" that affects program execution but more of a code cosmetic issue and a waste of memory. However, since some functions do not work when simply universalized into a single array, the parameters array was kept. 
+- An attempt to ensure background jobs cannot be read from the terminal occurs towards the bottom of main by opening "/dev/null". I have made some attempts to add a dup2 to change the stdin to the "dev/null" file descriptor but has caused instability issues. As a result
+  only an open function to "dev/null" is used. This helped improve stability with the program, specifically with input9 and getting consistent correct results. However, there may still be glitches where your.outputf is created but has no text content. 
+  
+Design Decisions:
+- Parse() is an int function that returns a -1, 0, or 1 and by default it will return a 1. Main handles this by terminating, reruning the prompt, and forking/executing respectively. 
+- Inside parse(), getword puts all the words into the arrayOfArgsLine array. It then runs through a for loop evaluating each word. First it checks if the word is a builtin such as cd. 
+- Towards the end of parse, if the word inputted made it that far in the program then it will be treated as an executable. This allowed me to get the name of the executable when it is not the first word printed. 
+
+Program logic/algorithm (copied from p2.c):
+//  Program logic/alogorithm: The program first starts an intialization of the signal catcher followed by
+//  a prompt then checking argv[1] so that the program can also read in inputs with existing filenames in
+//  argv[1] and bypass the use of a "<" redirection. The program then enters the parse() function which
+//  returns an int. Inside the parse function, tokenization is done by running  the getword() function as
+//  declared in getword.c with the parameter (argsline). With each return of the getword(argsline), the
+//  character pointer in argsline is stored into arrayOfArgsLine, an array of character pointers. The
+//  tokenization section also handles the builtin "!!" and "done" command which reinputs previous command
+//  entered and terminates the program respectively. Once a new line of EOF of the input stream is reached,
+//  then the tokenization ends and the analyzation begins. A for loop iterates through each word in
+//  arrayOfArgsLine and settings flags. First, it checks for the builtin "cd", determining which path to
+//  change directory (chdir) to. Since parse() is an int function, it returns 1 by deault if the program does
+//  not trigger the builtin_Flag. Triggering the builtin_Flag will return 0 and main does not fork and excute
+//  but instead reruns the prompts and wait for stdin/user input. Then it checks for IO redirection, setting
+//  flags and saving filenames and finally returns a 1 to main(). In main(), as stated earlier, it checks for
+//  what the parse() returned. A 0 reruns the prompts and a 1 creates a fork. Inside the child of the fork,
+//  if IO redirection was specified in parse, the stdin and stdout are changed to the filenames that were
+//  specified. The child of the fork then runs an execvp of the command that the user inputed. In the parent
+//  fork, if the background jobs will not wait for a child is the user inputted an ampersand as the last
+//  character in their input. Otherwise, non backgrounded jobs will wait for the child. When an EOF is reached
+//  from stdin, the program then kills the process group signal and exits successfully.
+
+
+Notes to Grader:
+- With regards to test 5,  Splint is causing me to lose a point due to one of my strdup use and I am unsure why this is occuring. The hints said to check if the header is properly defined and strdup is part of 
+  the string.h library which is defined. I have made other attempts to fix this issue such as putting my declarations to the top of the code block but am still recieving this error and am unsure why.
+- To reduce clutter of the gradernotes, the program description is described as header comments in p2.c.
