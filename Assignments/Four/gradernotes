@@ -4,9 +4,8 @@ https://stackoverflow.com/questions/48066168/c-fork-and-pipe-multiple-process
  
 
 /*****AREAS WHERE p2 DOES NOT WORK*****/
-Areas where p2 does not work:
 Test 14 (input 12) and test24 (input18)
-On test 14 input12, the execution causes ESCHEW to print on the same line as the prompt. The execution of the pipe and the output is correct but the placement of the prompt is not. The current output is :
+On test 14 input12, the execution causes ESCHEW to print on the same line as the prompt. The execution of the pipe is correct and successful as well as the output but the placement of the prompt is not. The current result is:
 %1% ESCHEW
 
 OBFUSCATION\
@@ -19,28 +18,37 @@ I have made attempts to print out ESCHEW on the next line and was successful how
 On test 24 input18, they are both handled the same with and without the argument input so in both cases it prints '#big hi'. Additionally, the prompt is printed as well so the results print:
 %1% #big hi  
 %2% #big hi
-/*****************************/
 
 
-/*****INDIVIDUAL CHOICES*****/
-Individual choices:
+/*****INDIVIDUAL CHOICES / DESIGN DECISIONS*****/
 Handling multiple redirections: In the parse() function, each metacharacter regarding IO redirection also has an int variable that keeps count of how many times it has appeared in the program. Inside parse(), there is a loop that iterates through each word in the line. When parse detects a ">" or "<" or ">&" a variable regarding each metacharacter gets incremented. If the same metacharacter is detected and the value of the variable is greater than 1 then it prints out a message to stderr and exits the loop. 
 
 Piping: When a pipe is detected it increments a variable called pipeCharCount. This is used to check if there is more than one pipe implemented. In parse, if there are two pipes detected then it prints an error and exits the loop. Otherwise, it sets the pipeFlag. When this is set, when the program returns to main it goes to the pipeExecute function in order to execute the process with a grandchild. This function replaces the original fork as when the program enters the pipeExecute() function and performs its task then exit, the program will then rerun without touching the original implementation of child and forking. For clarification about "Does ONLY the ORIGINAL p2 use wait()" in the checklist, since the pipeExecute() forks is independent of the original fork, the wait() statement inside the pipeExecute() function is still the original parent and there are no wait statements used in the child or grandchild. 
+
+History: When a program exists prompt, the line gets saved to a 2D array called historyArray. To check if the user inputted a ![num], it checks if the pointer to the first array in the string returned by getword is a "!". An atoi conversion of the next pointer is then saved to historyNumInput. If the historyNumInput is greater than or equal to 1 or less than or equal to 10 it then checks if the historyArray[num][0] is not null. If there is a value in the specified historyArray index, then the contents get copied into arrayOfArgsLine as well as the wordCount from the previous line. When parse performs its analyzation, it loops through arrayOfArgsLine and will perform the same way as if the user inputted the actual words from that input. When handling the !$, if it is detected in the initial metacharacter count check loop, then bangDollarFlag is set to SET (alias for 1). When this is true it then iterates through the user input line and figures out at which index does the !$ occur in arrayOfArgsLine. Once this is discovered then that index arrayOfArgsLine[bangDollarReplace] is replaced with the 2D historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1] where historyPreviousLastWordIndex is usually just the wordCount of the previous line. 
+
+The # sign: When a # sign is encountered and getword returned 1 (as it would just be the # sign by itself), then it simply exhausts the input stream. This is done by calling getword until it returns a termination value (EOF or newline). On each call of getword, nothing is done with the word pointer or the value it returns. Therefore, anything after the # sign is simply not added to arrayOfArgsline and does not get analyzed in the parse() loops. 
+
+The \| backslash pipe: When the \| is encountered, it sets the backslashPipeFlag to SET (alias for 1) and saves the pipeArraySplit value as the index where the \| occurred in the array to be passed into execvp. In main, when it checks if backslashPipeFlag is set, it changes the execCmd[pipeArraySplit] location to just | instead of \| and instead of going into pipeExecute() function, it performs the original fork with only one child. 
+
+Appending: Appends were added similarly to the other IO metacharacter redirections. Just like how parse() would set flags when the metacharacters were encountered, the same functionality was added with ">>" and ">>&". Inside the child, when the appendFlag or appendAmpersandFlag is set, then it checks if the file exists. If it does not then a message to stderr is printed "Cannot find file to append." If it does, then it opens a file descriptor with only O_RDWR and O_APPEND. This file descriptor is then replaced with stdout using dup2. If the appendAmpersandFlag is set as well then it performs an additional step and sets the same file descriptor to stderr. Since the pipeExecute is independent of the original forking area, this method of checking the appendFlags or appendAmpersandFlags is also copied into pipeExecute. Additionally due to time constraints, additional error checking for multiple append values were not implemented as they were for the other IO characters (i.e. there is no way to check if multiple >> or >>& were implemented but there are error checks for multiple >, <, and >&). However implementation of this error check for the append symbols would be similar to the other IO metacharacters where parse() keeps increments a specific variable for the metacharacter and if that value is greater than one then it prints out a message to stderr. But if that value were 1, it would perform the tasks that it currently performs in the program such as setting the appendFlag and saving the filename to outputFilename. 
 
 Name reported in a backgrounded pipeline: To test this the command "ls -C | tr A-Z a-z &" was inputted for the first prompt. On a sample run, the result was:
 %1% ls -C | tr A-Z a-z &
 ls [8294]
 %2% chk.h getword.c p2 ...
-Therefore the name reported in a background pipeline is the child process.
-/*****************************/
+Therefore the name reported in a background pipeline is the childpid.
 
 
 /*****UNEXPECTED BEHAVIORS*****/ 
+(For clarification, this section explains how the program handles unexpected user input behaviors and not unexpected behaviors of the program itself -- this is described in AREAS WHERE p2 DOES NOT WORK)
 For ambiguous output redirections such as echo hi > a >> b this is handled by checking in the child if the flags of both outputRedirectionFlag and the AppendFlag are set. If they are then The child outputs a message to stderr and exits. 
 
+History input out of bounds: When the user inputs a number such as !11, then the program performs an atoi on '11'. If 11 was between 1 and 10 then it would have set a variable called successInput to 1. But since it is not, then successInput remains 0 and then a stderr is printed "History value out of range. Enter a number from 1 through 9.\n". Another case would be if the user inputted a number that does not exist yet. If the current prompt is %2% and the user inputted !5, then the program checks if the historyArray[5][0] != NULL. If it is null then the program has not gotten that far yet and successInput remains a zero. Since the value 5 is within the legal range however, it prints out a different message to stderr: " History value does not exist\n".
 
+Multiple Pipes: As described earlier, each time parse() encounters a "|", a variable called pipeCharCount is incremented. This initial loop simply checks for metacharacters and increment a respected variable assigned to them. In the next loop, it performs more complex tasks (such as changing directories when "cd" is encountered).  In this next loop when "|" is encountered and the pipeCharCount is == 2 then it does not set the pipeFlag and instead prints a message to stderr: "Must only have one pipe.\n" The program then breaks out and waits for the next line or user input.
 
+/*****NOTES FOR GRADER*****/
+On test 5 regarding the splints, most of the errors generated were due to comments. In the IDE I am using (XCode 11.2.1), traditional methods of producing long comments such as /* ... */ causes the font to change to a much smaller size. To avoid this, I commented using //* ... *// which however causes errors with splint.
 
-
- 
+Lastly, thank you very much for your time in teaching and helping us in this class!

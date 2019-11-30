@@ -50,6 +50,10 @@
 #include <fcntl.h>          //open()
 #include <sys/wait.h>       //wait()
 #include <sys/stat.h>       //stat() -- NOT USED
+#include <sys/types.h>      //unused
+#include <fcntl.h>          //unused
+#include <errno.h>          //unused
+#include <stdbool.h>        //unused
 #include <string.h>         //strstr function
 #include "p2.h"
 #include "getword.h"
@@ -82,14 +86,12 @@ int previousCmdCallSize;
 
 int pointingAtPipeSymbol = NOT_SET;
 int backslashPipeFlag = NOT_SET;
-
 int pipeArraySplit = 0;
 
 static int shellCounter = 1;
-
 static char *historyArray[11][MAX_ARGS] = {NULL};   //Size is 11 since index 0 is not used
 static int historyArraySize[MAX_ARGS] = {-1};
-static int historyIndex = 1;
+static int historyIndex = 1;                        //historyArray starts at 1 to better align with prompt no.
 static int historyPreviousLastWordIndex = 0;
 
 int appendFlag = NOT_SET;
@@ -145,7 +147,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             break;
         }
         
-        //************************THIS SECTION HANDLES THE ![num] CHARACTER*********************************/
+        //************************THIS SECTION HANDLES THE ![num] CHARACTER*********************************//
         
         //Checks if the user input is between !1 and !9/
         if ((wordCount == 0) && strstr(&argsLine[0], "!") != 0) {
@@ -153,7 +155,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             int successInput = NOT_SET;
             
             //User inputted a number after "!"
-            if (historyNumInput >= 1 && historyNumInput <= 9) {
+            if (historyNumInput >= 1 && historyNumInput <= 10) {
 
                 if (historyArray[historyNumInput][0] != NULL) {
                     memcpy(arrayOfArgsLine, historyArray[historyNumInput], MAX_ARGS);
@@ -171,7 +173,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
             
             if(successInput == NOT_SET) {
-                if (historyNumInput >= 1 && historyNumInput <= 9) {
+                if (historyNumInput >= 1 && historyNumInput <= 10) {
                     fprintf(stderr, "%s", "History value does not exist.\n");
                     shellCounter++;
                     continue;
@@ -185,19 +187,7 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
             }
         }
         
-        /*
-        if (wordCount > 0 && strstr(&argsLine[0], "!") != 0 && strcmp(&argsLine[1], "$") == MATCH) {
-            //Replaces "!$" with the last word of the previous command
-            
-            if (historyPreviousLastWordIndex == 0) {
-                argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex];
-            } else {
-                argsLine = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
-            }
-        }*/
-        
-        
-        //*********************THIS SECTION HANDLES THE POUND SIGN INPUT*************************************/
+        //*********************THIS SECTION HANDLES THE POUND SIGN INPUT************************************//
         if (getwordFnResult == 1 && strcmp(argsLine, "#") == MATCH) {
             //Exhausts the input stream as any characters after '#' are ignored
             while(getwordFnResult != 0) {
@@ -336,13 +326,14 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         }
     }
     
-    //****************************THIS SECTION REPLACES THE '!$' ******************************************//
+    //****************************THIS SECTION REPLACES THE '!$' *******************************************//
     if (bangDollarFlag == SET) {
         int bangDollarReplace = 0;
         for (bangDollarReplace = EMPTY; bangDollarReplace < indexArrayOfArgsLine; bangDollarReplace++) {
             if ((strcmp(arrayOfArgsLine[bangDollarReplace], "!$")) == MATCH &&
                 (arrayOfArgsLine[bangDollarReplace]) != NULL) {
-                arrayOfArgsLine[bangDollarReplace] = historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
+                arrayOfArgsLine[bangDollarReplace] =
+                historyArray[historyIndex - 1][historyPreviousLastWordIndex - 1];
             }
         }
         bangDollarFlag = NOT_SET;
@@ -505,33 +496,24 @@ int parse(char *arrayOfArgsLine[], char *argsLine, char *parameters[], char *inp
         //*******************************THIS SECTION HANDLES PIPE FLAG*************************************//
         if (((strcmp(arrayOfArgsLine[loopIteration], "|")) == MATCH) ||
             ((strcmp(arrayOfArgsLine[loopIteration], "\\|")) == MATCH)) {
-            //TODO: FIGURE OUT WHAT THIS IF STATEMENT DOES
-            //If pipeflag has already been set then produce an error?
+            
             if (pipeFlag == SET && strcmp(arrayOfArgsLine[loopIteration + 1], "|") == MATCH) {
                 fprintf(stderr, "%s", "Pipe error.\n");
-                builtin_Flag = SET; //TODO: CHECK IF THIS IS NEEDED FOR PIPES?
+                builtin_Flag = SET;
                 continue;
             }
-            if (pipeCharCount == 2) {   //Set to two so that it only outputs once
-                fprintf(stderr, "%s", "Must only have one pipe.\n"); //TODO: CHECK IF WE ONLY CHECK FOR ONE PIPE
+            if (pipeCharCount == 2) {   //Set to two instead of > so that it only outputs once
+                fprintf(stderr, "%s", "Must only have one pipe.\n");
                 pipeCharCount++;
                 builtin_Flag = SET;
                 continue;
             } else if (pipeCharCount == 1) {
                 pipeArraySplit = execCmdIndex;
-                //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
                 pipeFlag = SET;
-                //builtin_Flag = SET;
-                //arrayOfArgsLine[loopIteration] = NULL;
-                //parameters[loopIteration] = NULL;
-                //TODO: Maybe create an array of the pipe info typed in here?
-                //printf("PIPE!!");
                 pointingAtPipeSymbol = SET;
                 continue;
-                //parameters[loopIteration] = NULL;
             } else if (backslashPipeFlag == SET) {
                 pipeArraySplit = execCmdIndex;
-                //pipeArraySplit++; //Offsets so that the starting position is on the word after the "|"
             }
         }
  
